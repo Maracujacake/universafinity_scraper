@@ -1,10 +1,8 @@
 from flask import Flask, jsonify
 import networkx as nx
 from networkx.readwrite import json_graph
-from scraper import obter_dados_professor
-from grafo_coautoria import gerar_grafo_coautoria
+import csv
 from flask_cors import CORS
-
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -15,21 +13,41 @@ CORS(app, resources={
     }
 })
 
-# Cache para armazenar o grafo (só gera uma vez)
 grafo_cache = None
+
+def gerar_grafo_csv(caminho_csv: str, max_linhas: int = 25):
+    G = nx.Graph()
+    with open(caminho_csv, newline='', encoding='utf-8') as csvfile:
+        leitor = csv.reader(csvfile)
+        for i, linha in enumerate(leitor):
+            if i >= max_linhas:
+                break
+            if len(linha) < 4:
+                continue  # Linha malformada
+
+            coautores_str = linha[3]
+            coautores = [nome.strip() for nome in coautores_str.split(";") if nome.strip()]
+
+            # Adiciona nós
+            for autor in coautores:
+                if not G.has_node(autor):
+                    G.add_node(autor, label=autor)
+
+            # Conecta todos entre si
+            for i in range(len(coautores)):
+                for j in range(i + 1, len(coautores)):
+                    a1, a2 = coautores[i], coautores[j]
+                    if G.has_edge(a1, a2):
+                        G[a1][a2]['peso'] += 1
+                    else:
+                        G.add_edge(a1, a2, peso=1)
+    return G
 
 def processar_grafo():
     global grafo_cache
     if grafo_cache is None:
-        print("Gerando grafo de coautoria...")  # Para debug
-        ids_professores = ["G-__GDUAAAAJ", "QZFWzugAAAAJ"]
-        dados_professores = obter_dados_professor(ids_professores)
-        variacoes_nomes = {
-            "Alan Valejo": {"ADB Valejo", "A Valejo"},
-            "Jo Ueyama": {"J Ueyama"}, 
-            "Alfredo Colenci Neto": {"C Neto"},
-        }
-        grafo_cache = gerar_grafo_coautoria(dados_professores, variacoes_nomes)
+        print("Lendo dados do CSV e gerando grafo de coautoria...")
+        grafo_cache = gerar_grafo_csv("web/publicacoes.csv", max_linhas=50)
     return grafo_cache
 
 @app.route('/api/grafo', methods=['GET'])
@@ -45,4 +63,3 @@ def get_grafo():
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
-

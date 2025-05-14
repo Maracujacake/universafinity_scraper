@@ -9,7 +9,6 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
   const [sigmaInstance, setSigmaInstance] = useState(null);
   const [graph, setGraph] = useState(null);
   const [highlightedNode, setHighlightedNode] = useState(null);
-  const [allEdges, setAllEdges] = useState([]);
 
   useEffect(() => {
     const container = document.getElementById('sigma-container');
@@ -25,61 +24,61 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
 
         const newGraph = new Graph();
 
-        // Adiciona os nós com posições aleatórias temporárias
+        // Adiciona nós com posições e cores iniciais
         data.nodes.forEach(node => {
           newGraph.addNode(node.id, {
             label: node.label || node.id,
             x: Math.random() * 100,
             y: Math.random() * 100,
             size: 5,
-            color: '#f97316'
+            color: '#60A5FA' // Azul-claro para combinar com fundo escuro/azul
           });
         });
 
-        // Pega o nome de todos os nós, para passar para a SearchBar
+        // Pega nomes dos nós para preencher a SearchBar
         const nomes = data.nodes.map(n => n.label || n.id);
         setNodeList(nomes);
 
-        // Adiciona as arestas
-        setAllEdges(data.edges);
-
+        // Adiciona arestas com base no peso mínimo
         data.edges.forEach(edge => {
           try {
             newGraph.addEdge(edge.source, edge.target, {
               size: edge.weight,
-              color: edge.weight >= minWeight ? '#facc15' : 'transparent'
+              color: edge.weight >= minWeight ? '#FFFFFF' : 'transparent'
             });
           } catch (e) {
             console.warn(`Erro ao adicionar aresta ${edge.source}-${edge.target}`, e);
           }
         });
 
-        if (newGraph.order === 0) {
-          throw new Error('O grafo está vazio');
-        }
+        if (newGraph.order === 0) throw new Error('O grafo está vazio');
 
         // Aplica o layout ForceAtlas2
         forceAtlas2.assign(newGraph, {
-          iterations: 100,
+          iterations: 150,
           settings: {
-            gravity: 0.1
+            gravity: 1.0,
+            scalingRatio: 2.0,
+            strongGravityMode: true,
+            slowDown: 1.5,
+            edgeWeightInfluence: 0.5,
+            linLogMode: true,
+            barnesHutOptimize: true,
+            barnesHutTheta: 0.5
           }
         });
 
-        // Ajusta o tamanho com base no grau
+        // Ajusta tamanho dos nós com base no grau
         newGraph.forEachNode((node) => {
           const degree = newGraph.degree(node);
           newGraph.setNodeAttribute(node, 'size', Math.min(5 + degree, 20));
         });
 
-        if (sigmaInstance) {
-          sigmaInstance.kill(); // Mata o Sigma anterior se existir
-        }
+        // Limpa instância anterior se houver
+        if (sigmaInstance) sigmaInstance.kill();
         container.innerHTML = '';
 
-        
-
-        // Instancia o Sigma com o grafo final
+        // Cria nova instância do Sigma
         const sigma = new Sigma(newGraph, container);
         setSigmaInstance(sigma);
         setGraph(newGraph);
@@ -93,71 +92,73 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
     loadGraph();
   }, []);
 
-
+  // Atualiza visual com base no peso mínimo e nó destacado
   useEffect(() => {
     if (!graph) return;
-  
-    console.log('minWeight:', minWeight);
-  
-    // 1. Resetar todas as arestas
-    graph.forEachEdge((edgeKey) => {
-      graph.setEdgeAttribute(edgeKey, 'color', '#ccc');
+
+    if(searchTerm) return;
+    graph.forEachEdge((edgeKey, attributes) => {
+      const weight = attributes.size;
+      graph.setEdgeAttribute(edgeKey, 'color', weight >= minWeight ? '#FFFFFF' : 'transparent');
     });
-  
-    // 2. Se houver um nó destacado, aplicar filtro de peso nas arestas conectadas a ele
+
     if (highlightedNode && graph.hasNode(highlightedNode)) {
       graph.forEachEdge(highlightedNode, (edgeKey, attributes) => {
         const weight = attributes.size;
         if (weight >= minWeight) {
-          graph.setEdgeAttribute(edgeKey, 'color', '#24fc3e');
+          graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Verde neon
         }
       });
     }
   }, [minWeight, graph, highlightedNode]);
 
+  // Quando um nó é buscado
   useEffect(() => {
     let animationFrameId;
     let startTime;
-    console.log('minWeight:', minWeight);
+
     if (searchTerm && graph && sigmaInstance) {
       const nodeExists = graph.hasNode(searchTerm);
-  
+
       if (nodeExists) {
-        // Resetar cor e tamanho do nó anterior (se houver)
-        if (highlightedNode && graph.hasNode(highlightedNode)) {
-          graph.forEachNode((node) => {
-            graph.setNodeAttribute(node, 'color', '#f97316');
-            graph.setNodeAttribute(node, 'size', Math.min(5 + graph.degree(node), 20));
-          });
-        }
-  
-        // Resetar cores de todas as arestas para o padrão 🧹
-        graph.forEachEdge((edge) => {
-          graph.setEdgeAttribute(edge, 'color', '#facc15');
-        });
-  
-        // Destacar o novo nó
-        graph.setNodeAttribute(searchTerm, 'color', '#EF4444');
         setHighlightedNode(searchTerm);
-  
-        // Realçar arestas conectadas ao nó buscado
-        graph.forEachEdge(searchTerm, (edgeKey, attributes, source, target) => {
-          graph.setEdgeAttribute(edgeKey, 'color', '#24fc3e');
+
+        // Obtém vizinhos
+        const neighbors = new Set(graph.neighbors(searchTerm));
+        neighbors.add(searchTerm); // Inclui o próprio nó pesquisado
+
+        // Atualiza cor dos nós
+        graph.forEachNode((node) => {
+          if (neighbors.has(node)) {
+            // Nó relevante: destaque
+            graph.setNodeAttribute(node, 'color', node === searchTerm ? '#EF4444' : '#FACC15'); // Vermelho ou Amarelo
+          } else {
+            // Nó irrelevante: desfoque
+            graph.setNodeAttribute(node, 'color', 'rgba(100, 100, 100, 0.1)'); // cinza claro desatualizado
+          }
         });
 
-        // Realçar nós conectados ao nó buscado
-        graph.forEachNeighbor(searchTerm, (neighbor) => {
-          graph.setNodeAttribute(neighbor, 'color', '#facc15'); // amarelo vibrante
+        // Atualiza cor das arestas
+        graph.forEachEdge((edgeKey, attributes, source, target) => {
+          const weight = attributes.size;
+
+          if (neighbors.has(source) && neighbors.has(target) && weight >= minWeight) {
+            // Aresta conectada ao nó buscado
+            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // verde neon
+          } else {
+            // Aresta irrelevante
+            graph.setEdgeAttribute(edgeKey, 'color', 'rgba(100, 100, 100, 0.1)');
+          }
         });
-  
+
+        // Animação pulsante
         const baseSize = Math.min(5 + graph.degree(searchTerm), 20);
-        const amplitude = 0.4; // A faixa será de 0.9x a 1.1x
+        const amplitude = 0.4;
         const speed = 2;
 
         const animate = (time) => {
           if (!startTime) startTime = time;
           const elapsed = (time - startTime) / 1000;
-
           const scaleFactor = 0.9 + ((Math.sin(elapsed * speed) + 1) / 2) * amplitude;
           const newSize = baseSize * scaleFactor;
 
@@ -170,7 +171,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
         alert('Nó não encontrado no grafo!');
       }
     }
-  
+
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
