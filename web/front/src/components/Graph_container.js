@@ -95,22 +95,40 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
   // Atualiza visual com base no peso mínimo e nó destacado
   useEffect(() => {
     if (!graph) return;
-
-    if(searchTerm) return;
-    graph.forEachEdge((edgeKey, attributes) => {
-      const weight = attributes.size;
-      graph.setEdgeAttribute(edgeKey, 'color', weight >= minWeight ? '#FFFFFF' : 'transparent');
-    });
-
-    if (highlightedNode && graph.hasNode(highlightedNode)) {
-      graph.forEachEdge(highlightedNode, (edgeKey, attributes) => {
+  
+    // Se estiver buscando um nó específico
+    if (searchTerm && graph.hasNode(searchTerm)) {
+      const neighbors = new Set(graph.neighbors(searchTerm));
+      neighbors.add(searchTerm); // Inclui o próprio nó
+  
+      // Atualiza somente arestas entre os nós relevantes (nó buscado + vizinhos)
+      graph.forEachEdge((edgeKey, attributes, source, target) => {
         const weight = attributes.size;
-        if (weight >= minWeight) {
-          graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Verde neon
+  
+        if (neighbors.has(source) && neighbors.has(target) && weight >= minWeight) {
+          graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Aresta relevante
+        } else {
+          graph.setEdgeAttribute(edgeKey, 'color', 'rgba(0,0,0,0)'); // Oculta
         }
       });
+    } else {
+      // Nenhum termo de busca: aplica regra global baseada apenas no peso
+      graph.forEachEdge((edgeKey, attributes) => {
+        const weight = attributes.size;
+        graph.setEdgeAttribute(edgeKey, 'color', weight >= minWeight ? '#FFFFFF' : 'rgba(0,0,0,0)');
+      });
+  
+      // Destaca arestas do nó selecionado (hover, por exemplo)
+      if (highlightedNode && graph.hasNode(highlightedNode)) {
+        graph.forEachEdge(highlightedNode, (edgeKey, attributes) => {
+          const weight = attributes.size;
+          if (weight >= minWeight) {
+            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Verde neon
+          }
+        });
+      }
     }
-  }, [minWeight, graph, highlightedNode]);
+  }, [minWeight, graph, highlightedNode, searchTerm]);
 
   // Quando um nó é buscado
   useEffect(() => {
