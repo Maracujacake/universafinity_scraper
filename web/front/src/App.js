@@ -2,31 +2,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import GraphContainer from './components/Graph_container';
-import SearchBar from './components/Search_Bar';
+import HomePage from './pages/HomePage';
 import Grafo2 from './pages/Grafo2';
 import Grafo3 from './pages/Grafo3';
-import WeightFilter from './components/Weight_Filter';
-import OverlayPanel from './components/Overlay_panel';
-
-const HomePage = ({ isPanelVisible, searchTerm, setSearchTerm, nodeList, setNodeList, minWeight, setMinWeight }) => {
-  return (
-    <div className="relative bg-[#1E3A8A] text-white min-h-screen z-10">
-      <div className="absolute inset-0 -z-10">
-        <GraphContainer searchTerm={searchTerm} setNodeList={setNodeList} minWeight={minWeight} />
-      </div>
-
-      <OverlayPanel
-        isVisible={isPanelVisible}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        nodeList={nodeList}
-        minWeight={minWeight}
-        setMinWeight={setMinWeight}
-      />
-    </div>
-  );
-};
 
 const App = () => {
   const [searchTerm, setSearchTerm] = useState('');

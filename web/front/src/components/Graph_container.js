@@ -6,7 +6,7 @@ import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
 
 
 
-const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
+const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sigmaInstance, setSigmaInstance] = useState(null);
@@ -153,7 +153,10 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
       const nodeExists = graph.hasNode(searchTerm);
 
       if (nodeExists) {
+        const connectionsList = []; // vai mostrar no botão flutuante a lista agui
         setHighlightedNode(searchTerm);
+        
+        
 
         // Foco e zoom no nó buscado
         const { x, y } = graph.getNodeAttributes(searchTerm);
@@ -179,6 +182,23 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
         // Obtém vizinhos
         const neighbors = new Set(graph.neighbors(searchTerm));
         neighbors.add(searchTerm);
+
+        // popula a lista de vizinhos
+        graph.forEachEdge((edgeKey, attributes, source, target) => {
+          const weight = attributes.size;
+        
+          if (
+            (source === searchTerm || target === searchTerm) &&
+            neighbors.has(source) &&
+            neighbors.has(target) &&
+            weight >= minWeight
+          ) {
+            const connectedNode = source === searchTerm ? target : source;
+            connectionsList.push({ node: connectedNode, weight });
+          }
+        });
+        
+        setConnections(connectionsList);
 
         // Colore nós
         graph.forEachNode((node) => {
