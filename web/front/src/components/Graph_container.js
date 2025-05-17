@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import Graph from 'graphology';
 import Sigma from 'sigma';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
+import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
+
+
 
 const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
   const [loading, setLoading] = useState(true);
@@ -14,6 +17,8 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
     const container = document.getElementById('sigma-container');
     if (!container || container.offsetWidth === 0) return;
 
+
+    // CARREGA O GRAFO DE FUNDO
     const loadGraph = async () => {
       try {
         setLoading(true);
@@ -25,13 +30,15 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
         const newGraph = new Graph();
 
         // Adiciona nós com posições e cores iniciais
-        data.nodes.forEach(node => {
+        data.nodes.forEach( (node, i) => {
           newGraph.addNode(node.id, {
             label: node.label || node.id,
-            x: Math.random() * 100,
-            y: Math.random() * 100,
+            //x: Math.random() * 100,
+            //y: Math.random() * 100,
+            x: Math.cos(i) * 100,
+            y: Math.sin(i) * 100,
             size: 5,
-            color: '#60A5FA' // Azul-claro para combinar com fundo escuro/azul
+            color: '#60A5FA'
           });
         });
 
@@ -58,7 +65,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
           iterations: 150,
           settings: {
             gravity: 1.0,
-            scalingRatio: 2.0,
+            scalingRatio: 10,
             strongGravityMode: true,
             slowDown: 1.5,
             edgeWeightInfluence: 0.5,
@@ -68,11 +75,14 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
           }
         });
 
+
         // Ajusta tamanho dos nós com base no grau
         newGraph.forEachNode((node) => {
           const degree = newGraph.degree(node);
           newGraph.setNodeAttribute(node, 'size', Math.min(5 + degree, 20));
         });
+
+        rescaleGraphPositions(newGraph, 100);
 
         // Limpa instância anterior se houver
         if (sigmaInstance) sigmaInstance.kill();
@@ -92,7 +102,9 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
     loadGraph();
   }, []);
 
-  // Atualiza visual com base no peso mínimo e nó destacado
+
+
+  // ATUALIZAÇÃO DO NÓ ( PESO MINIMO )
   useEffect(() => {
     if (!graph) return;
   
@@ -130,10 +142,12 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
     }
   }, [minWeight, graph, highlightedNode, searchTerm]);
 
-  // Quando um nó é buscado
+
+
+  // QUANDO UM NÓ É BUSCADO
   useEffect(() => {
-    let animationFrameId;
-    let startTime;
+  let animationFrameId;
+  let startTime;
 
     if (searchTerm && graph && sigmaInstance) {
       const nodeExists = graph.hasNode(searchTerm);
@@ -141,30 +155,46 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight }) => {
       if (nodeExists) {
         setHighlightedNode(searchTerm);
 
+        // Foco e zoom no nó buscado
+        const { x, y } = graph.getNodeAttributes(searchTerm);
+        console.log(`Focando em ${searchTerm} com coordenadas x=${x}, y=${y}`);
+
+        const camera = sigmaInstance.getCamera();
+        const currentRatio = camera.getState().ratio;
+        const newRatio = Math.max(0.1, Math.min(1, currentRatio));
+
+        setTimeout(() => {
+          camera.animate(
+            {
+              x,
+              y,
+              ratio: newRatio,
+            },
+            {
+              duration: 600,
+            }
+          );
+        }, 100);
+
         // Obtém vizinhos
         const neighbors = new Set(graph.neighbors(searchTerm));
-        neighbors.add(searchTerm); // Inclui o próprio nó pesquisado
+        neighbors.add(searchTerm);
 
-        // Atualiza cor dos nós
+        // Colore nós
         graph.forEachNode((node) => {
           if (neighbors.has(node)) {
-            // Nó relevante: destaque
-            graph.setNodeAttribute(node, 'color', node === searchTerm ? '#EF4444' : '#FACC15'); // Vermelho ou Amarelo
+            graph.setNodeAttribute(node, 'color', node === searchTerm ? '#EF4444' : '#FACC15');
           } else {
-            // Nó irrelevante: desfoque
-            graph.setNodeAttribute(node, 'color', 'rgba(100, 100, 100, 0.1)'); // cinza claro desatualizado
+            graph.setNodeAttribute(node, 'color', 'rgba(100, 100, 100, 0.1)');
           }
         });
 
-        // Atualiza cor das arestas
+        // Colore arestas
         graph.forEachEdge((edgeKey, attributes, source, target) => {
           const weight = attributes.size;
-
           if (neighbors.has(source) && neighbors.has(target) && weight >= minWeight) {
-            // Aresta conectada ao nó buscado
-            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // verde neon
+            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E');
           } else {
-            // Aresta irrelevante
             graph.setEdgeAttribute(edgeKey, 'color', 'rgba(100, 100, 100, 0.1)');
           }
         });
