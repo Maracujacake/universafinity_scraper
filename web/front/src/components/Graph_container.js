@@ -3,7 +3,8 @@ import Graph from 'graphology';
 import Sigma from 'sigma';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
-
+import NodeDetailsCard from "./Node_Details";
+import SigmaErrorScreen from '../pages/Sigma_Error';
 
 
 const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  }) => {
@@ -12,11 +13,35 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
   const [sigmaInstance, setSigmaInstance] = useState(null);
   const [graph, setGraph] = useState(null);
   const [highlightedNode, setHighlightedNode] = useState(null);
+  const [clickedNode, setClickedNode] = useState(null); // container informaçao no clicado
+  const [sigmaRenderError, setSigmaRenderError] = useState(false); // pagina de erro sigma
+
+
 
   useEffect(() => {
     const container = document.getElementById('sigma-container');
-    if (!container || container.offsetWidth === 0) return;
+    if (!container) return;
 
+    let tries = 0;
+    const maxTries = 20;
+    const interval = 100; // ms
+  
+    const tryLoad = () => {
+      console.log('Tamanho container:', container.offsetWidth, container.offsetHeight);
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        console.log("tavitatmeaoidfmod");
+        tries++;
+        if (tries >= maxTries) {
+          setSigmaRenderError(true); // Não conseguiu carregar o grafo
+          setLoading(false);
+          return;
+        }
+        setTimeout(tryLoad, interval);
+        return;
+      }
+      loadGraph();
+    };
+    
 
     // CARREGA O GRAFO DE FUNDO
     const loadGraph = async () => {
@@ -88,19 +113,43 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         if (sigmaInstance) sigmaInstance.kill();
         container.innerHTML = '';
 
-        // Cria nova instância do Sigma
-        const sigma = new Sigma(newGraph, container);
-        setSigmaInstance(sigma);
-        setGraph(newGraph);
-        setLoading(false);
+        try {
+          const sigma = new Sigma(newGraph, container);
+          setSigmaInstance(sigma);
+          setGraph(newGraph);
+          setLoading(false);
+        } catch (renderError) {
+          console.error("Erro ao renderizar Sigma:", renderError);
+          setSigmaRenderError(true);
+          setLoading(false);
+        }
       } catch (err) {
         setError(err.message);
         setLoading(false);
       }
     };
 
-    loadGraph();
+    tryLoad(); 
   }, []);
+
+
+  useEffect(() => {
+    if (!sigmaInstance || !graph) return;
+  
+    const handleClickNode = ({ node }) => {
+      if (graph.hasNode(node)) {
+        const attrs = graph.getNodeAttributes(node);
+        setClickedNode({ id: node, ...attrs });
+      }
+    };
+  
+    sigmaInstance.on("clickNode", handleClickNode);
+  
+    // Cleanup para evitar múltiplos listeners
+    return () => {
+      sigmaInstance.removeListener("clickNode", handleClickNode);
+    };
+  }, [sigmaInstance, graph]);
 
 
 
@@ -261,10 +310,19 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         </div>
       )}
 
+      {sigmaRenderError && <SigmaErrorScreen />}
+
       <div
         id="sigma-container"
         className="w-full h-full"
       />
+
+      {clickedNode && (
+        <NodeDetailsCard
+          node={clickedNode}
+          onClose={() => setClickedNode(null)}
+        />
+      )}
     </div>
   );
 };
