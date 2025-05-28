@@ -5,7 +5,7 @@ import forceAtlas2 from 'graphology-layout-forceatlas2';
 import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
 import NodeDetailsCard from "./Node_Details";
 import SigmaErrorScreen from '../pages/Sigma_Error';
-
+import { gerarCoresComunidades } from '../funcs/CriaCores'; 
 
 const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  }) => {
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,8 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
       }
       loadGraph();
     };
+
+
     
 
     // CARREGA / CRIA   O GRAFO DE FUNDO
@@ -55,15 +57,17 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         const newGraph = new Graph();
 
         // cores para cada comunidade
-        const communityColors = [
-          '#FF6B6B', '#6BCB77', '#4D96FF', '#FFD93D',
-          '#9D4EDD', '#43AA8B', '#F4A261', '#8D99AE',
-        ];
+
+        const coresComunidades = gerarCoresComunidades(22);
+
+        function getColorForCommunity(community) {
+          return coresComunidades[community % coresComunidades.length];
+        }
 
         // Adiciona nós com posições e cores iniciais
         data.nodes.forEach( (node, i) => {
           const community = node.comunidade || 0; // backend deve enviar isso
-          const color = communityColors[community % communityColors.length];
+          const color = getColorForCommunity(community);
           newGraph.addNode(node.id, {
             label: node.label || node.id,
             //x: Math.random() * 100,

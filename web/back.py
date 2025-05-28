@@ -55,9 +55,40 @@ def processar_grafo():
         comunidades = detectar_comunidades(grafo_cache)
 
         for no, comunidade in comunidades.items():
-            print(f"Nó: {no}, Comunidade: {comunidade}")
+            # descomente a linha abaixo para depuração
+            # print(f"Nó: {no}, Comunidade: {comunidade}")
             grafo_cache.nodes[no]['comunidade'] = comunidade
     
+    # Infos adicionais
+    num_nos = grafo_cache.number_of_nodes()
+    num_arestas = grafo_cache.number_of_edges()
+    comunidades_set = set(nx.get_node_attributes(grafo_cache, 'comunidade').values())
+    num_comunidades = len(comunidades_set)
+
+    # Tamanho médio das comunidades
+    from collections import Counter
+    contagem_comunidades = Counter(nx.get_node_attributes(grafo_cache, 'comunidade').values())
+    tamanho_medio_communidade = sum(contagem_comunidades.values()) / num_comunidades if num_comunidades > 0 else 0
+
+    # Graus
+    graus = [grafo_cache.degree(n) for n in grafo_cache.nodes()]
+    grau_max = max(graus) if graus else 0
+    grau_medio = sum(graus) / len(graus) if graus else 0
+    grau_min = min(graus) if graus else 0
+
+    info = {
+        "num_nos": num_nos,
+        "num_arestas": num_arestas,
+        "num_comunidades": num_comunidades,
+        "tamanho_medio_comunidade": tamanho_medio_communidade,
+        "grau_maximo": grau_max,
+        "grau_medio": grau_medio,
+        "grau_minimo": grau_min,
+    }
+
+    for chave, valor in info.items():
+        print(f"{chave}: {valor}")
+
     return grafo_cache
 
 @app.route('/api/grafo', methods=['GET'])
