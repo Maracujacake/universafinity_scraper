@@ -43,7 +43,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
     };
     
 
-    // CARREGA O GRAFO DE FUNDO
+    // CARREGA / CRIA   O GRAFO DE FUNDO
     const loadGraph = async () => {
       try {
         setLoading(true);
@@ -54,8 +54,16 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
 
         const newGraph = new Graph();
 
+        // cores para cada comunidade
+        const communityColors = [
+          '#FF6B6B', '#6BCB77', '#4D96FF', '#FFD93D',
+          '#9D4EDD', '#43AA8B', '#F4A261', '#8D99AE',
+        ];
+
         // Adiciona nós com posições e cores iniciais
         data.nodes.forEach( (node, i) => {
+          const community = node.comunidade || 0; // backend deve enviar isso
+          const color = communityColors[community % communityColors.length];
           newGraph.addNode(node.id, {
             label: node.label || node.id,
             //x: Math.random() * 100,
@@ -63,7 +71,8 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
             x: Math.cos(i) * 100,
             y: Math.sin(i) * 100,
             size: 5,
-            color: '#60A5FA'
+            color: color,
+            community: community,
           });
         });
 
@@ -87,13 +96,13 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
 
         // Aplica o layout ForceAtlas2
         forceAtlas2.assign(newGraph, {
-          iterations: 150,
+          iterations: 700,
           settings: {
-            gravity: 1.0,
+            gravity: 0.05,
             scalingRatio: 10,
             strongGravityMode: true,
-            slowDown: 1.5,
-            edgeWeightInfluence: 0.5,
+            slowDown: 1.0,
+            edgeWeightInfluence: 1.0,
             linLogMode: true,
             barnesHutOptimize: true,
             barnesHutTheta: 0.5
@@ -133,6 +142,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
   }, []);
 
 
+  // POP-UP DE INFORMACOES
   useEffect(() => {
     if (!sigmaInstance || !graph) return;
   
