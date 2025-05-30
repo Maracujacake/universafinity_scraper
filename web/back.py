@@ -76,7 +76,7 @@ def processar_grafo():
     grau_medio = sum(graus) / len(graus) if graus else 0
     grau_min = min(graus) if graus else 0
 
-    info = {
+    info_cache = {
         "num_nos": num_nos,
         "num_arestas": num_arestas,
         "num_comunidades": num_comunidades,
@@ -86,19 +86,20 @@ def processar_grafo():
         "grau_minimo": grau_min,
     }
 
-    for chave, valor in info.items():
+    for chave, valor in info_cache.items():
         print(f"{chave}: {valor}")
 
-    return grafo_cache
+    return grafo_cache, info_cache
 
 @app.route('/api/grafo', methods=['GET'])
 def get_grafo():
-    grafo = processar_grafo()
+    grafo, info = processar_grafo()
     data = json_graph.node_link_data(grafo)
 
     formatted_data = {
         "nodes": [{"id": node["id"], "label": node.get("label", str(node["id"])), "comunidade": node.get("comunidade", -1)} for node in data["nodes"]],
-        "edges": [{"source": edge["source"], "target": edge["target"], "weight": edge.get("peso", 1)} for edge in data["links"]]
+        "edges": [{"source": edge["source"], "target": edge["target"], "weight": edge.get("peso", 1)} for edge in data["links"]],
+         "info": info
     }
     return jsonify(formatted_data)
 

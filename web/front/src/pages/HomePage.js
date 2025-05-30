@@ -4,6 +4,8 @@ import GraphContainer from '../components/Graph_container';
 import OverlayPanel from '../components/Overlay_panel';
 import FloatingButton from '../components/Floating_button';
 import ConnectionsPanel from '../components/Connection_pannel';
+import FloatingInfoPanel from '../components/Floating_Menu_InfoPannel';
+import FloatingActionMenu from '../components/Floating_ActionMenu';
 
 const HomePage = ({
   isPanelVisible,
@@ -12,11 +14,14 @@ const HomePage = ({
   nodeList,
   setNodeList,
   minWeight,
+  graphInfo,
+  setGraphInfo,
   setMinWeight
 }) => {
   const [connections, setConnections] = useState([]);
   const [showConnections, setShowConnections] = useState(false);
   const [foundNode, setFoundNode] = useState(null);
+  
 
   const handleSearch = (term) => {
     setSearchTerm(term);
@@ -32,8 +37,11 @@ const HomePage = ({
           setNodeList={setNodeList}
           minWeight={minWeight}
           setConnections={setConnections}
+          setGraphInfo={setGraphInfo}
         />
       </div>
+
+      <FloatingActionMenu info={graphInfo} />
 
       <OverlayPanel
         isVisible={isPanelVisible}

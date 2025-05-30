@@ -6,8 +6,9 @@ import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
 import NodeDetailsCard from "./Node_Details";
 import SigmaErrorScreen from '../pages/Sigma_Error';
 import { gerarCoresComunidades } from '../funcs/CriaCores'; 
+import FloatingInfoPanel from './Floating_Menu_InfoPannel';
 
-const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  }) => {
+const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, setGraphInfo   }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sigmaInstance, setSigmaInstance] = useState(null);
@@ -15,6 +16,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
   const [highlightedNode, setHighlightedNode] = useState(null);
   const [clickedNode, setClickedNode] = useState(null); // container informaçao no clicado
   const [sigmaRenderError, setSigmaRenderError] = useState(false); // pagina de erro sigma
+
 
 
 
@@ -55,6 +57,12 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         const data = await response.json();
 
         const newGraph = new Graph();
+        
+        if (setGraphInfo) {
+          setGraphInfo(data.info);  // Atualiza o estado no App.js
+          console.log(data.info);
+        }
+
 
         // cores para cada comunidade
 
@@ -64,16 +72,19 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
           return coresComunidades[community % coresComunidades.length];
         }
 
+       
+
         // Adiciona nós com posições e cores iniciais
         data.nodes.forEach( (node, i) => {
+  
           const community = node.comunidade || 0; // backend deve enviar isso
           const color = getColorForCommunity(community);
           newGraph.addNode(node.id, {
             label: node.label || node.id,
-            //x: Math.random() * 100,
-            //y: Math.random() * 100,
-            x: Math.cos(i) * 100,
-            y: Math.sin(i) * 100,
+            //x: 0,
+            //y: 0,
+            x: 2151 + i,
+            y: 2 + i,
             size: 5,
             color: color,
             community: community,
@@ -120,7 +131,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
           newGraph.setNodeAttribute(node, 'size', Math.min(5 + degree, 20));
         });
 
-        rescaleGraphPositions(newGraph, 100);
+        rescaleGraphPositions(newGraph, 200);
 
         // Limpa instância anterior se houver
         if (sigmaInstance) sigmaInstance.kill();
@@ -153,6 +164,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
     const handleClickNode = ({ node }) => {
       if (graph.hasNode(node)) {
         const attrs = graph.getNodeAttributes(node);
+        console.log(`Clique no nó ${node} com coordenadas x=${attrs.x}, y=${attrs.y}`);
         setClickedNode({ id: node, ...attrs });
       }
     };
@@ -221,7 +233,6 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         
         
 
-        // Foco e zoom no nó buscado
         const { x, y } = graph.getNodeAttributes(searchTerm);
         console.log(`Focando em ${searchTerm} com coordenadas x=${x}, y=${y}`);
 
@@ -229,18 +240,51 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections  })
         const currentRatio = camera.getState().ratio;
         const newRatio = Math.max(0.1, Math.min(1, currentRatio));
 
+        console.log("Estado atual da câmera (antes da animação):", camera.getState());
+
+        function animateToNode(camera, graph, nodeId, ratio = 1, duration = 600) {
+          const node = graph.getNodeAttributes(nodeId);
+          if (!node) return;
+        
+          camera.animate(
+            {
+              x: node.x * 0.1,
+              y: node.y * 0.1,
+              ratio: ratio,
+            },
+            {
+              duration: duration,
+              easing: "quadraticInOut",
+            }
+          );
+        }
+
+        animateToNode(camera, graph, searchTerm);
+
+        
+/*
         setTimeout(() => {
           camera.animate(
             {
               x,
               y,
-              ratio: newRatio,
+              ratio: 1.5,
             },
             {
               duration: 600,
             }
           );
+
+          // Espera passar o tempo da animação (600ms) para ver o novo estado
+          setTimeout(() => {
+            const finalCameraState = camera.getState();
+            console.log("Estado da câmera após animação:", finalCameraState);
+          }, 700); // um pouco maior que a duração da animação
+
         }, 100);
+*/       
+        const currentCameraState2 = camera.getState();
+        console.log("Estado atual da câmera:", currentCameraState2);
 
         // Obtém vizinhos
         const neighbors = new Set(graph.neighbors(searchTerm));
