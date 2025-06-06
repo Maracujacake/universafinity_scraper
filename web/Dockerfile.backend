@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# talvez a gente nao precise copiar tudo de novo
+COPY web/ /app/ 
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# web.back talvez
+CMD ["python", "-m", "back"] 
