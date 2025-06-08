@@ -1,3 +1,4 @@
+# web/docker-compose.yml
 version: "3.8"
 
 services:
@@ -6,9 +7,10 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8000:8000"
+      - "5000:5000"
     volumes:
-      - ./web/back:/app
+      - ./back.py:/app/back.py
+      - ./requirements.txt:/app/requirements.txt
     working_dir: /app
 
   frontend:
@@ -18,7 +20,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./web/front:/app
+      - ./front:/app
     working_dir: /app
     environment:
       - CHOKIDAR_USEPOLLING=true

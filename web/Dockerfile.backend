@@ -2,9 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# talvez a gente nao precise copiar tudo de novo
-COPY web/ /app/ 
+# Instalar dependências do sistema necessárias para compilar mysqlclient e outras libs
+RUN apt-get update && apt-get install -y \
+    gcc \
+    default-libmysqlclient-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ./back.py ./gera_comunidades.py ./requirements.txt ./publicacoes.csv /app/
+
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# web.back talvez
-CMD ["python", "-m", "back"] 
+CMD ["python", "back.py"]

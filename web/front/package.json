@@ -2,6 +2,7 @@
   "name": "front",
   "version": "0.1.0",
   "private": true,
+    "proxy": "http://127.0.0.2:5000/api/grafo",
   "dependencies": {
     "@react-sigma/layout-core": "^5.0.4",
     "@react-sigma/layout-forceatlas2": "^5.0.4",

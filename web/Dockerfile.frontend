@@ -1,8 +1,11 @@
-FROM node:18
+    # web/Dockerfile.frontend
+    FROM node:20
 
-WORKDIR /app
+    WORKDIR /app
 
-COPY web/front/ /app/
-RUN npm install
+    COPY ./front/package*.json ./
+    RUN npm install
 
-CMD ["npm", "start"]
+    COPY ./front .
+
+    CMD ["npm", "start"]

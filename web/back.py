@@ -3,7 +3,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 import csv
 from flask_cors import CORS
-from web.gera_comunidades import detectar_comunidades
+from gera_comunidades import detectar_comunidades
 
 
 app = Flask(__name__)
@@ -49,7 +49,7 @@ def processar_grafo():
     global grafo_cache
     if grafo_cache is None:
         print("Lendo dados do CSV e gerando grafo de coautoria...")
-        grafo_cache = gerar_grafo_csv("web/publicacoes.csv", max_linhas=200)
+        grafo_cache = gerar_grafo_csv("publicacoes.csv", max_linhas=200)
 
         print("Detectando comunidades com Louvain...")
         comunidades = detectar_comunidades(grafo_cache)

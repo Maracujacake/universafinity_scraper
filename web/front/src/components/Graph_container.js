@@ -45,7 +45,27 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
     };
 
 
-    
+    const backendUrls = [
+      //'http://192.168.0.73:5000/api/grafo',
+      'http://127.0.0.1:5000/api/grafo',
+      'http://172.21.0.2:5000/api/grafo',
+      'http://localhost:5000/api/grafo',
+      'http://backend:5000/api/grafo'
+    ];
+
+    const fetchFromBackends = async (urls) => {
+      for (const url of urls) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const data = await response.json();
+          if (data) return data;
+        } catch {
+          // erro na fetch, tenta próxima URL
+        }
+      }
+      throw new Error("Não foi possível obter dados do backend");
+    };
 
     // CARREGA / CRIA   O GRAFO DE FUNDO
     const loadGraph = async () => {
@@ -53,8 +73,9 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
         setLoading(true);
         setError(null);
 
-        const response = await fetch('http://192.168.0.73:5000/api/grafo');
-        const data = await response.json();
+        //const response = await fetch('http://192.168.0.73:5000/api/grafo');
+        const data = await fetchFromBackends(backendUrls);
+        console.log("Dados recebidos do backend:", JSON.stringify(data, null, 2));
 
         const newGraph = new Graph();
         
