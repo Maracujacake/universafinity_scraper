@@ -1,15 +1,17 @@
-// src/components/FloatingButton.js
-import React from 'react';
+import { motion } from 'framer-motion';
 import { Users } from 'lucide-react';
 
 const FloatingButton = ({ onClick }) => {
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className="fixed bottom-6 right-6 bg-[#1E3A8A] text-white p-4 rounded-full shadow-lg hover:bg-blue-800 transition-all z-50"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="fixed bottom-6 left-6 bg-[#1E3A8A] text-white p-4 rounded-full shadow-lg hover:bg-blue-800 z-50 glow-effect"
     >
       <Users size={24} />
-    </button>
+    </motion.button>
   );
 };
 

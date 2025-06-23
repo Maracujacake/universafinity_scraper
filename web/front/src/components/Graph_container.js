@@ -6,6 +6,8 @@ import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
 import NodeDetailsCard from "./Node_Details";
 import SigmaErrorScreen from '../pages/Sigma_Error';
 import { gerarCoresComunidades } from '../funcs/CriaCores'; 
+import MiniGraphView from './Mini_Graph_View';
+import MiniGraphToggleButton from './MiniGraph_Floating_Button';
 import FloatingInfoPanel from './Floating_Menu_InfoPannel';
 
 const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, setGraphInfo   }) => {
@@ -16,8 +18,11 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
   const [highlightedNode, setHighlightedNode] = useState(null);
   const [clickedNode, setClickedNode] = useState(null); // container informaçao no clicado
   const [sigmaRenderError, setSigmaRenderError] = useState(false); // pagina de erro sigma
+  const [showMiniGraph, setShowMiniGraph] = useState(false); // zoom-in de nó buscado e sua rede
 
-
+  const handleMiniGraphToggle = () => {
+    setShowMiniGraph(prev => !prev);
+  };
 
 
   useEffect(() => {
@@ -83,8 +88,8 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
             label: node.label || node.id,
             //x: 0,
             //y: 0,
-            x: 2151 + i,
-            y: 2 + i,
+            x: 85001/2 + 22*i,
+            y: 852/3 + i,
             size: 5,
             color: color,
             community: community,
@@ -359,6 +364,19 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
           <div className="text-lg font-semibold">Carregando grafo...</div>
         </div>
       )}
+
+      {/* botão para abrir/fechar mini grafo */}
+      {searchTerm && graph && (
+        <MiniGraphToggleButton onClick={handleMiniGraphToggle} active={showMiniGraph} />
+      )}
+
+      {/* Mini grafo separado */}
+      <MiniGraphView
+        graph={graph}
+        centerNode={searchTerm}
+        minWeight={minWeight}
+        visible={showMiniGraph}
+      />
 
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
