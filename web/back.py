@@ -17,6 +17,9 @@ CORS(app, resources={
 
 grafo_cache = None
 
+# Lista de docentes do Departamento de Computação (DC)
+DOCENTES_DC = {"Alan Valejo"}  # podemos expandir depois
+
 def gerar_grafo_csv(caminho_csv: str, max_linhas: int = 200):
     G = nx.Graph()
     with open(caminho_csv, newline='', encoding='utf-8') as csvfile:
@@ -34,6 +37,7 @@ def gerar_grafo_csv(caminho_csv: str, max_linhas: int = 200):
             for autor in coautores:
                 if not G.has_node(autor):
                     G.add_node(autor, label=autor)
+                G.nodes[autor]['dc'] = autor in DOCENTES_DC
 
             # Conecta todos entre si
             for i in range(len(coautores)):
@@ -97,7 +101,7 @@ def get_grafo():
     data = json_graph.node_link_data(grafo)
 
     formatted_data = {
-        "nodes": [{"id": node["id"], "label": node.get("label", str(node["id"])), "comunidade": node.get("comunidade", -1)} for node in data["nodes"]],
+        "nodes": [{"id": node["id"], "label": node.get("label", str(node["id"])), "comunidade": node.get("comunidade", -1), "dc_ufscar": node.get("dc", False)} for node in data["nodes"]],
         "edges": [{"source": edge["source"], "target": edge["target"], "weight": edge.get("peso", 1)} for edge in data["links"]],
          "info": info
     }

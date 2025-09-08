@@ -8,9 +8,9 @@ import SigmaErrorScreen from '../pages/Sigma_Error';
 import { gerarCoresComunidades } from '../funcs/CriaCores'; 
 import MiniGraphView from './Mini_Graph_View';
 import MiniGraphToggleButton from './MiniGraph_Floating_Button';
-import FloatingInfoPanel from './Floating_Menu_InfoPannel';
+let sigmaLoaded = 0;
 
-const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, setGraphInfo   }) => {
+const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, setGraphInfo, graphUrl }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sigmaInstance, setSigmaInstance] = useState(null);
@@ -20,19 +20,26 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
   const [sigmaRenderError, setSigmaRenderError] = useState(false); // pagina de erro sigma
   const [showMiniGraph, setShowMiniGraph] = useState(false); // zoom-in de nó buscado e sua rede
 
+
   const handleMiniGraphToggle = () => {
     setShowMiniGraph(prev => !prev);
   };
 
 
   useEffect(() => {
+    
+    console.log("MEU DEUS")
+    
     const container = document.getElementById('sigma-container');
     if (!container) return;
 
     let tries = 0;
     const maxTries = 20;
     const interval = 100; // ms
-  
+
+    
+    
+    /*
     const tryLoad = () => {
       console.log('Tamanho container:', container.offsetWidth, container.offsetHeight);
       if (container.offsetWidth === 0 || container.offsetHeight === 0) {
@@ -46,10 +53,12 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
         setTimeout(tryLoad, interval);
         return;
       }
+      
       loadGraph();
     };
+    */
 
-
+    
     
 
     // CARREGA / CRIA   O GRAFO DE FUNDO
@@ -58,16 +67,19 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
         setLoading(true);
         setError(null);
 
-        const response = await fetch('http://192.168.0.73:5000/api/grafo');
+        const response = await fetch( graphUrl || 'http://192.168.0.73:5000/api/grafo');
+
         const data = await response.json();
 
         const newGraph = new Graph();
         
         if (setGraphInfo) {
+          console.log(graphUrl);
+          console.log(data);
           setGraphInfo(data.info);  // Atualiza o estado no App.js
           console.log(data.info);
         }
-
+        
 
         // cores para cada comunidade
 
@@ -93,6 +105,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
             size: 5,
             color: color,
             community: community,
+            dc_ufscar: node.dc_ufscar || false
           });
         });
 
@@ -138,17 +151,40 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
 
         rescaleGraphPositions(newGraph, 200);
 
+
+        await new Promise(resolve => {
+          const checkContainer = () => {
+            const container = document.getElementById('sigma-container');
+            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+              resolve();
+            } else {
+              setTimeout(checkContainer, 50);
+            }
+          };
+          checkContainer();
+        });
+
         // Limpa instância anterior se houver
         if (sigmaInstance) sigmaInstance.kill();
         container.innerHTML = '';
 
         try {
-          const sigma = new Sigma(newGraph, container);
+          await new Promise(resolve => requestAnimationFrame(resolve));
+
+          const sigma = new Sigma(newGraph, container, {
+            allowInvalidContainer: true,
+          });
+          if (container.offsetWidth === 0) container.style.width = '800px';
+          if (container.offsetHeight === 0) container.style.height = '600px';
+
           setSigmaInstance(sigma);
           setGraph(newGraph);
           setLoading(false);
+        
+          
         } catch (renderError) {
           console.error("Erro ao renderizar Sigma:", renderError);
+          
           setSigmaRenderError(true);
           setLoading(false);
         }
@@ -158,7 +194,8 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
       }
     };
 
-    tryLoad(); 
+    loadGraph(); 
+
   }, []);
 
 

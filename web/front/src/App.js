@@ -1,11 +1,14 @@
 // src/App.js
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useParams  } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import Grafo2 from './pages/Grafo2';
 import Grafo3 from './pages/Grafo3';
-import FloatingInfoPanel from './components/Floating_Menu_InfoPannel';
+import RecomendacoesWrapper from './funcs/RecomendacoesWrapper';
+
+
+
 
 const App = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +36,19 @@ const App = () => {
             setGraphInfo={setGraphInfo}     
           />
         } />
+
+        <Route path="/recomendacoes/:docenteId" element={<RecomendacoesWrapper
+          isPanelVisible={isPanelVisible}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          nodeList={nodeList}
+          setNodeList={setNodeList}
+          minWeight={minWeight}
+          setMinWeight={setMinWeight}
+          graphInfo={graphInfo}
+          setGraphInfo={setGraphInfo}
+        />} />
+
         <Route path="/grafo2" element={<Grafo2 />} />
         <Route path="/grafo3" element={<Grafo3 />} />
       </Routes>

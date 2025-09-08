@@ -4,7 +4,6 @@ import GraphContainer from '../components/Graph_container';
 import OverlayPanel from '../components/Overlay_panel';
 import FloatingButton from '../components/Floating_button';
 import ConnectionsPanel from '../components/Connection_pannel';
-import FloatingInfoPanel from '../components/Floating_Menu_InfoPannel';
 import FloatingActionMenu from '../components/Floating_ActionMenu';
 
 const HomePage = ({
@@ -16,7 +15,8 @@ const HomePage = ({
   minWeight,
   graphInfo,
   setGraphInfo,
-  setMinWeight
+  setMinWeight,
+  graphUrl,
 }) => {
   const [connections, setConnections] = useState([]);
   const [showConnections, setShowConnections] = useState(false);
@@ -32,12 +32,14 @@ const HomePage = ({
   return (
     <div className="relative bg-[#1E3A8A] text-white min-h-screen z-10">
       <div className="absolute inset-0 -z-10">
+        {console.log("📦 Renderizando GraphContainer...")}
         <GraphContainer
           searchTerm={searchTerm}
           setNodeList={setNodeList}
           minWeight={minWeight}
           setConnections={setConnections}
           setGraphInfo={setGraphInfo}
+          graphUrl={graphUrl}
         />
       </div>
 
