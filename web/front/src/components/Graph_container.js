@@ -67,7 +67,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
         setLoading(true);
         setError(null);
 
-        const response = await fetch( graphUrl || 'http://192.168.0.73:5000/api/grafo');
+        const response = await fetch( graphUrl || 'http://127.0.0.1:5000/api/grafo');
 
         const data = await response.json();
 
@@ -129,7 +129,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
 
         // Aplica o layout ForceAtlas2
         forceAtlas2.assign(newGraph, {
-          iterations: 700,
+          iterations: 100,
           settings: {
             gravity: 0.05,
             scalingRatio: 10,
@@ -354,7 +354,7 @@ const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, se
           if (neighbors.has(node)) {
             graph.setNodeAttribute(node, 'color', node === searchTerm ? '#EF4444' : '#FACC15');
           } else {
-            graph.setNodeAttribute(node, 'color', 'rgba(100, 100, 100, 0.1)');
+            graph.setNodeAttribute(node, 'color', 'rgba(0, 0, 0, 0.02)');
           }
         });
 
