@@ -144,6 +144,22 @@ def obter_dados_professor(ids_professores):
 
     return resultados
 
+def normalizar_nome(nome, variacoes_nomes):
+    """
+    Normaliza um nome de autor com base no dicionário de variações.
+    
+    Args:
+        nome (str): Nome do coautor.
+        variacoes_nomes (dict): Dicionário de variações de nomes.
+    
+    Returns:
+        str: Nome normalizado.
+    """
+    for nome_padrao, variacoes in variacoes_nomes.items():
+        if nome in variacoes or nome == nome_padrao:
+            return nome_padrao  # Retorna o nome principal
+    return nome  # Retorna o nome original se não estiver no dicionário
+
 
 def exibir_dados_formatados(dados):
     """
@@ -152,6 +168,7 @@ def exibir_dados_formatados(dados):
     Args:
         dados (dict): Dados processados dos professores.
     """
+
     for professor, info in dados.items():
         print("=" * 50)
         print(f"Professor: {professor}\n")
@@ -164,13 +181,24 @@ def exibir_dados_formatados(dados):
         else:
             print("  Nenhum coautor listado.")
 
+        # Lista de variações do nome do professor
+        variacoes_professor = variacoes_nomes.get(professor, set()) | {professor}
+
+        # Normaliza e remove duplicatas antes de exibir, excluindo o próprio professor
+        coautores_normalizados = {
+            normalizar_nome(nome, variacoes_nomes) 
+            for nome in info["all_coautores"] 
+            if normalizar_nome(nome, variacoes_nomes) not in variacoes_professor
+        }
+        
         # Exibe a lista unificada de coautores
         print("\nTodos os coautores (perfil + trabalhos):")
-        if info["all_coautores"]:
-            for coautor in info["all_coautores"]:
+        if coautores_normalizados:
+            for coautor in sorted(coautores_normalizados):  # Ordena para melhorar a legibilidade
                 print(f"  - {coautor}")
         else:
             print("  Nenhum coautor listado.")
+
 
 
         # Exibe trabalho por trabalho, junto com os coautores de cada trabalho
@@ -187,11 +215,15 @@ def exibir_dados_formatados(dados):
             if(trabalho['abstract'] != 'N/A'):
                 print("\n")
             
-            if(trabalho['coautores'] != 'N/A'):
-                print("\n")
-            print(f"     Co-Autores: {trabalho['coautores']}")
-            if(trabalho['coautores'] != 'N/A'):
-                print("\n")
+            trabalho["coautores"] = [
+                normalizar_nome(coautor, variacoes_nomes) 
+                for coautor in trabalho["coautores"] 
+                if normalizar_nome(coautor, variacoes_nomes) not in variacoes_professor
+            ]
+
+            if trabalho["coautores"]:
+                print(f"\n     Coautores: {', '.join(trabalho['coautores'])}")
+            print("\n")
             
             print(f"     Link_Externo: {trabalho['link_externo']}")
             print("=" * 25 + "\n")
@@ -199,20 +231,22 @@ def exibir_dados_formatados(dados):
 
 
 
-
 # IDs de exemplo
 # Fred : "G-__GDUAAAAJ"
 # Alan: "QZFWzugAAAAJ"
-ids_professores = ["G-__GDUAAAAJ"]
+variacoes_nomes =   {
+                            "Fredy Valente": {"Fredy João Valente", "Fredy J Valente", "FJ Valente", "Fredy Joao Valente"},
+                            "Alan Valejo": {"ADB Valejo", "A Valejo", "Alan Demétrius Baria Valejo"},
+                            "Kelen Vivaldini": {"K Vivaldini", "Kelen Cristiane Teixeira Vivaldini"},
+                            "Ricardo Menotti": {"R Menotti ER Kato"},
+                            ""
+                            "Jo Ueyama": {"J Ueyama"}, 
+                            "Alfredo Colenci Neto" : {"C Neto"},
+                    }
+
+ids_professores = ["QZFWzugAAAAJ"]
 dados_professores = obter_dados_professor(ids_professores)
 exibir_dados_formatados(dados_professores)
-
-
-variacoes_nomes = {
-    "Alan Valejo": {"ADB Valejo", "A Valejo"},
-    "Jo Ueyama": {"J Ueyama"}, 
-    "Alfredo Colenci Neto" : {"C Neto"},
-}
 
 
 grafo = gerar_grafo_coautoria(dados_professores, variacoes_nomes)
