@@ -1,4 +1,4 @@
-export function rescaleGraphPositions(graph, padding = 100) {
+export function rescaleGraphPositions(graph, paddingRatio = 0.12) {
   const nodes = graph.nodes();
   if (nodes.length === 0) return;
 
@@ -13,15 +13,18 @@ export function rescaleGraphPositions(graph, padding = 100) {
     if (y > maxY) maxY = y;
   });
 
-  const width = maxX - minX || 1;  
+  const width = maxX - minX || 1;
   const height = maxY - minY || 1;
-
-  console.log('width:', width, 'height:', height);
+  const largestDimension = Math.max(width, height) || 1;
+  const centerX = minX + width / 2;
+  const centerY = minY + height / 2;
+  const safePadding = Math.min(Math.max(paddingRatio, 0), 0.45);
+  const scale = 1 - safePadding;
 
   nodes.forEach(node => {
     const { x, y } = graph.getNodeAttributes(node);
-    const newX = (padding + ((x - minX) / width) * width) / 500;
-    const newY = (padding + ((y - minY) / height) * height) / 500;
+    const newX = ((x - centerX) / largestDimension) * scale;
+    const newY = ((y - centerY) / largestDimension) * scale;
     graph.setNodeAttribute(node, 'x', newX);
     graph.setNodeAttribute(node, 'y', newY);
   });

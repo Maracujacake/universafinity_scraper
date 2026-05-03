@@ -1,435 +1,406 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Graph from 'graphology';
 import Sigma from 'sigma';
-import forceAtlas2 from 'graphology-layout-forceatlas2';
-import { rescaleGraphPositions } from '../funcs/RescaleGraphPositions';
-import NodeDetailsCard from "./Node_Details";
+import FA2Layout from 'graphology-layout-forceatlas2/worker';
+import circular from 'graphology-layout/circular';
+import NodeDetailsCard from './Node_Details';
 import SigmaErrorScreen from '../pages/Sigma_Error';
-import { gerarCoresComunidades } from '../funcs/CriaCores'; 
-import MiniGraphView from './Mini_Graph_View';
-import MiniGraphToggleButton from './MiniGraph_Floating_Button';
-let sigmaLoaded = 0;
 
-const GraphContainer = ({ searchTerm, setNodeList, minWeight, setConnections, setGraphInfo, graphUrl }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [sigmaInstance, setSigmaInstance] = useState(null);
-  const [graph, setGraph] = useState(null);
-  const [highlightedNode, setHighlightedNode] = useState(null);
-  const [clickedNode, setClickedNode] = useState(null); // container informaçao no clicado
-  const [sigmaRenderError, setSigmaRenderError] = useState(false); // pagina de erro sigma
-  const [showMiniGraph, setShowMiniGraph] = useState(false); // zoom-in de nó buscado e sua rede
+// ─────────────────────────────────────────────
+// Paleta de cores para comunidades (até 32)
+// ─────────────────────────────────────────────
+const COMMUNITY_PALETTE = [
+  '#60A5FA', '#34D399', '#F472B6', '#FBBF24', '#A78BFA',
+  '#38BDF8', '#4ADE80', '#FB923C', '#E879F9', '#2DD4BF',
+  '#F87171', '#818CF8', '#FCD34D', '#86EFAC', '#67E8F9',
+  '#C084FC', '#FCA5A5', '#6EE7B7', '#FDE68A', '#BAE6FD',
+  '#DDD6FE', '#FBCFE8', '#A5F3FC', '#BBF7D0', '#FEF08A',
+  '#E9D5FF', '#FECACA', '#99F6E4', '#FED7AA', '#BFDBFE',
+  '#D9F99D', '#F5D0FE',
+];
 
+function getCommunityColor(community) {
+  return COMMUNITY_PALETTE[community % COMMUNITY_PALETTE.length];
+}
 
-  const handleMiniGraphToggle = () => {
-    setShowMiniGraph(prev => !prev);
-  };
+// ─────────────────────────────────────────────
+// Componente principal
+// ─────────────────────────────────────────────
+const GraphContainer = ({
+  searchTerm,
+  setNodeList,
+  minWeight,
+  setConnections,
+  setGraphInfo,
+  graphUrl,
+}) => {
+  // ── refs ──────────────────────────────────
+  const sigmaRef         = useRef(null);   // instância Sigma
+  const graphRef         = useRef(null);   // instância Graph
+  const fa2Ref           = useRef(null);   // worker FA2
+  const containerRef     = useRef(null);   // div#sigma-container
+  const fullGraphDataRef = useRef(null);   // guarda os dados baixados (como "base de dados" local)
 
+  // ── estado de UI ──────────────────────────
+  const [loading, setLoading]                 = useState(true);
+  const [layoutProgress, setLayoutProgress]   = useState(0);   // 0–100
+  const [layoutDone, setLayoutDone]           = useState(false);
+  const [error, setError]                     = useState(null);
+  const [sigmaRenderError, setSigmaRenderError] = useState(false);
+  const [clickedNode, setClickedNode]         = useState(null);
 
+  // ─────────────────────────────────────────
+  // 1. CARREGA OS DADOS (roda uma vez na montagem)
+  // ─────────────────────────────────────────
   useEffect(() => {
-    
-    console.log("MEU DEUS")
-    
-    const container = document.getElementById('sigma-container');
-    if (!container) return;
+    let cancelled = false;
 
-    let tries = 0;
-    const maxTries = 20;
-    const interval = 100; // ms
-
-    
-    
-    /*
-    const tryLoad = () => {
-      console.log('Tamanho container:', container.offsetWidth, container.offsetHeight);
-      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-        console.log("tavitatmeaoidfmod");
-        tries++;
-        if (tries >= maxTries) {
-          setSigmaRenderError(true); // Não conseguiu carregar o grafo
-          setLoading(false);
-          return;
-        }
-        setTimeout(tryLoad, interval);
-        return;
-      }
-      
-      loadGraph();
-    };
-    */
-
-    
-    
-
-    // CARREGA / CRIA   O GRAFO DE FUNDO
     const loadGraph = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch( graphUrl || 'http://127.0.0.1:5000/api/grafo');
-
+        // 1. Busca dados da API
+        const response = await fetch(graphUrl || 'http://127.0.0.1:5000/api/grafo');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
+        if (cancelled) return;
 
-        const newGraph = new Graph();
-        
-        if (setGraphInfo) {
-          console.log(graphUrl);
-          console.log(data);
-          setGraphInfo(data.info);  // Atualiza o estado no App.js
-          console.log(data.info);
-        }
-        
+        if (setGraphInfo) setGraphInfo(data.info);
 
-        // cores para cada comunidade
+        // 2. Popula SearchBar
+        setNodeList(data.nodes.map((n) => n.label || n.id));
 
-        const coresComunidades = gerarCoresComunidades(22);
-
-        function getColorForCommunity(community) {
-          return coresComunidades[community % coresComunidades.length];
-        }
-
-       
-
-        // Adiciona nós com posições e cores iniciais
-        data.nodes.forEach( (node, i) => {
-  
-          const community = node.comunidade || 0; // backend deve enviar isso
-          const color = getColorForCommunity(community);
-          newGraph.addNode(node.id, {
-            label: node.label || node.id,
-            //x: 0,
-            //y: 0,
-            x: 85001/2 + 22*i,
-            y: 852/3 + i,
-            size: 5,
-            color: color,
-            community: community,
-            dc_ufscar: node.dc_ufscar || false
-          });
-        });
-
-        // Pega nomes dos nós para preencher a SearchBar
-        const nomes = data.nodes.map(n => n.label || n.id);
-        setNodeList(nomes);
-
-        // Adiciona arestas com base no peso mínimo
-        data.edges.forEach(edge => {
-          try {
-            newGraph.addEdge(edge.source, edge.target, {
-              size: edge.weight,
-              color: edge.weight >= minWeight ? '#FFFFFF' : 'transparent'
-            });
-          } catch (e) {
-            console.warn(`Erro ao adicionar aresta ${edge.source}-${edge.target}`, e);
-          }
-        });
-
-        if (newGraph.order === 0) throw new Error('O grafo está vazio');
-
-        // Aplica o layout ForceAtlas2
-        forceAtlas2.assign(newGraph, {
-          iterations: 100,
-          settings: {
-            gravity: 0.05,
-            scalingRatio: 10,
-            strongGravityMode: true,
-            slowDown: 1.0,
-            edgeWeightInfluence: 1.0,
-            linLogMode: true,
-            barnesHutOptimize: true,
-            barnesHutTheta: 0.5
-          }
-        });
-
-
-        // Ajusta tamanho dos nós com base no grau
-        newGraph.forEachNode((node) => {
-          const degree = newGraph.degree(node);
-          newGraph.setNodeAttribute(node, 'size', Math.min(5 + degree, 20));
-        });
-
-        rescaleGraphPositions(newGraph, 200);
-
-
-        await new Promise(resolve => {
-          const checkContainer = () => {
-            const container = document.getElementById('sigma-container');
-            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
-              resolve();
-            } else {
-              setTimeout(checkContainer, 50);
-            }
+        // 3. Estrutura os nós em um mapa (O(1) lookup)
+        const nodeMap = {};
+        data.nodes.forEach((node) => {
+          nodeMap[node.id] = {
+            ...node,
+            color: getCommunityColor(node.comunidade || 0)
           };
-          checkContainer();
         });
 
-        // Limpa instância anterior se houver
-        if (sigmaInstance) sigmaInstance.kill();
-        container.innerHTML = '';
-
-        try {
-          await new Promise(resolve => requestAnimationFrame(resolve));
-
-          const sigma = new Sigma(newGraph, container, {
-            allowInvalidContainer: true,
-          });
-          if (container.offsetWidth === 0) container.style.width = '800px';
-          if (container.offsetHeight === 0) container.style.height = '600px';
-
-          setSigmaInstance(sigma);
-          setGraph(newGraph);
-          setLoading(false);
-        
-          
-        } catch (renderError) {
-          console.error("Erro ao renderizar Sigma:", renderError);
-          
-          setSigmaRenderError(true);
-          setLoading(false);
-        }
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-      }
-    };
-
-    loadGraph(); 
-
-  }, []);
-
-
-  // POP-UP DE INFORMACOES
-  useEffect(() => {
-    if (!sigmaInstance || !graph) return;
-  
-    const handleClickNode = ({ node }) => {
-      if (graph.hasNode(node)) {
-        const attrs = graph.getNodeAttributes(node);
-        console.log(`Clique no nó ${node} com coordenadas x=${attrs.x}, y=${attrs.y}`);
-        setClickedNode({ id: node, ...attrs });
-      }
-    };
-  
-    sigmaInstance.on("clickNode", handleClickNode);
-  
-    // Cleanup para evitar múltiplos listeners
-    return () => {
-      sigmaInstance.removeListener("clickNode", handleClickNode);
-    };
-  }, [sigmaInstance, graph]);
-
-
-
-  // ATUALIZAÇÃO DO NÓ ( PESO MINIMO )
-  useEffect(() => {
-    if (!graph) return;
-  
-    // Se estiver buscando um nó específico
-    if (searchTerm && graph.hasNode(searchTerm)) {
-      const neighbors = new Set(graph.neighbors(searchTerm));
-      neighbors.add(searchTerm); // Inclui o próprio nó
-  
-      // Atualiza somente arestas entre os nós relevantes (nó buscado + vizinhos)
-      graph.forEachEdge((edgeKey, attributes, source, target) => {
-        const weight = attributes.size;
-  
-        if (neighbors.has(source) && neighbors.has(target) && weight >= minWeight) {
-          graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Aresta relevante
-        } else {
-          graph.setEdgeAttribute(edgeKey, 'color', 'rgba(0,0,0,0)'); // Oculta
-        }
-      });
-    } else {
-      // Nenhum termo de busca: aplica regra global baseada apenas no peso
-      graph.forEachEdge((edgeKey, attributes) => {
-        const weight = attributes.size;
-        graph.setEdgeAttribute(edgeKey, 'color', weight >= minWeight ? '#FFFFFF' : 'rgba(0,0,0,0)');
-      });
-  
-      // Destaca arestas do nó selecionado (hover, por exemplo)
-      if (highlightedNode && graph.hasNode(highlightedNode)) {
-        graph.forEachEdge(highlightedNode, (edgeKey, attributes) => {
-          const weight = attributes.size;
-          if (weight >= minWeight) {
-            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E'); // Verde neon
-          }
-        });
-      }
-    }
-  }, [minWeight, graph, highlightedNode, searchTerm]);
-
-
-
-  // QUANDO UM NÓ É BUSCADO
-  useEffect(() => {
-  let animationFrameId;
-  let startTime;
-
-    if (searchTerm && graph && sigmaInstance) {
-      const nodeExists = graph.hasNode(searchTerm);
-
-      if (nodeExists) {
-        const connectionsList = []; // vai mostrar no botão flutuante a lista agui
-        setHighlightedNode(searchTerm);
-        
-        
-
-        const { x, y } = graph.getNodeAttributes(searchTerm);
-        console.log(`Focando em ${searchTerm} com coordenadas x=${x}, y=${y}`);
-
-        const camera = sigmaInstance.getCamera();
-        const currentRatio = camera.getState().ratio;
-        const newRatio = Math.max(0.1, Math.min(1, currentRatio));
-
-        console.log("Estado atual da câmera (antes da animação):", camera.getState());
-
-        function animateToNode(camera, graph, nodeId, ratio = 1, duration = 600) {
-          const node = graph.getNodeAttributes(nodeId);
-          if (!node) return;
-        
-          camera.animate(
-            {
-              x: node.x * 0.1,
-              y: node.y * 0.1,
-              ratio: ratio,
-            },
-            {
-              duration: duration,
-              easing: "quadraticInOut",
-            }
-          );
-        }
-
-        animateToNode(camera, graph, searchTerm);
-
-        
-/*
-        setTimeout(() => {
-          camera.animate(
-            {
-              x,
-              y,
-              ratio: 1.5,
-            },
-            {
-              duration: 600,
-            }
-          );
-
-          // Espera passar o tempo da animação (600ms) para ver o novo estado
-          setTimeout(() => {
-            const finalCameraState = camera.getState();
-            console.log("Estado da câmera após animação:", finalCameraState);
-          }, 700); // um pouco maior que a duração da animação
-
-        }, 100);
-*/       
-        const currentCameraState2 = camera.getState();
-        console.log("Estado atual da câmera:", currentCameraState2);
-
-        // Obtém vizinhos
-        const neighbors = new Set(graph.neighbors(searchTerm));
-        neighbors.add(searchTerm);
-
-        // popula a lista de vizinhos
-        graph.forEachEdge((edgeKey, attributes, source, target) => {
-          const weight = attributes.size;
-        
-          if (
-            (source === searchTerm || target === searchTerm) &&
-            neighbors.has(source) &&
-            neighbors.has(target) &&
-            weight >= minWeight
-          ) {
-            const connectedNode = source === searchTerm ? target : source;
-            connectionsList.push({ node: connectedNode, weight });
-          }
-        });
-        
-        setConnections(connectionsList);
-
-        // Colore nós
-        graph.forEachNode((node) => {
-          if (neighbors.has(node)) {
-            graph.setNodeAttribute(node, 'color', node === searchTerm ? '#EF4444' : '#FACC15');
-          } else {
-            graph.setNodeAttribute(node, 'color', 'rgba(0, 0, 0, 0.02)');
-          }
-        });
-
-        // Colore arestas
-        graph.forEachEdge((edgeKey, attributes, source, target) => {
-          const weight = attributes.size;
-          if (neighbors.has(source) && neighbors.has(target) && weight >= minWeight) {
-            graph.setEdgeAttribute(edgeKey, 'color', '#24FC3E');
-          } else {
-            graph.setEdgeAttribute(edgeKey, 'color', 'rgba(100, 100, 100, 0.1)');
-          }
-        });
-
-        // Animação pulsante
-        const baseSize = Math.min(5 + graph.degree(searchTerm), 20);
-        const amplitude = 0.4;
-        const speed = 2;
-
-        const animate = (time) => {
-          if (!startTime) startTime = time;
-          const elapsed = (time - startTime) / 1000;
-          const scaleFactor = 0.9 + ((Math.sin(elapsed * speed) + 1) / 2) * amplitude;
-          const newSize = baseSize * scaleFactor;
-
-          graph.setNodeAttribute(searchTerm, 'size', newSize);
-          animationFrameId = requestAnimationFrame(animate);
+        // 4. Salva o grafo completo na memória local
+        fullGraphDataRef.current = {
+          nodes: nodeMap,
+          edges: data.edges,
         };
 
-        animationFrameId = requestAnimationFrame(animate);
-      } else {
-        alert('Nó não encontrado no grafo!');
+        setLoading(false);
+
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
       }
-    }
+    };
+
+    loadGraph();
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      cancelled = true;
+      if (fa2Ref.current) {
+        fa2Ref.current.stop();
+        fa2Ref.current.kill();
+      }
+      if (sigmaRef.current) sigmaRef.current.kill();
     };
-  }, [searchTerm, graph, sigmaInstance]);
+  }, [graphUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─────────────────────────────────────────
+  // 2. BUSCA → Cria e renderiza o sub-grafo
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    // Só prossegue se os dados já foram carregados
+    if (!fullGraphDataRef.current) return;
+
+    // Função local de limpeza do grafo atual
+    const clearGraph = () => {
+      if (fa2Ref.current) {
+        fa2Ref.current.stop();
+        fa2Ref.current.kill();
+        fa2Ref.current = null;
+      }
+      if (sigmaRef.current) {
+        sigmaRef.current.kill();
+        sigmaRef.current = null;
+      }
+      if (graphRef.current) {
+        graphRef.current.clear();
+        graphRef.current = null;
+      }
+    };
+
+    // Se não houver termo buscado, limpa a tela e aborta
+    if (!searchTerm) {
+      clearGraph();
+      setConnections?.([]);
+      setLayoutDone(false);
+      return;
+    }
+
+    const { nodes: nodeMap, edges: allEdges } = fullGraphDataRef.current;
+    
+    // Se o nó pesquisado não existe na base local
+    if (!nodeMap[searchTerm]) {
+      return;
+    }
+
+    // 1. Encontra as arestas onde o nó alvo participa, filtrando pelo minWeight
+    const connectedEdges = [];
+    const nodesToAdd = new Set([searchTerm]);
+    const connectionsList = [];
+
+    allEdges.forEach(edge => {
+      const weight = edge.weight ?? 1;
+      if (weight >= (minWeight || 1)) {
+        if (edge.source === searchTerm || edge.target === searchTerm) {
+          connectedEdges.push(edge);
+          const peer = edge.source === searchTerm ? edge.target : edge.source;
+          nodesToAdd.add(peer);
+          connectionsList.push({ node: peer, weight });
+        }
+      }
+    });
+
+    // Atualiza a sidebar de conexões
+    setConnections?.(connectionsList);
+
+    // 2. Cria instância de um novo sub-grafo
+    const subGraph = new Graph({ multi: false });
+
+    // Adiciona apenas os nós da vizinhança
+    nodesToAdd.forEach(nodeId => {
+      const nData = nodeMap[nodeId];
+      if (nData) {
+        subGraph.addNode(nodeId, {
+          label: nData.label || nodeId,
+          x: Math.random(),
+          y: Math.random(),
+          size: 5,
+          color: nData.color,
+          dc_ufscar: nData.dc_ufscar || false,
+        });
+      }
+    });
+
+    // Adiciona as arestas capturadas
+    connectedEdges.forEach(edge => {
+      const weight = edge.weight ?? 1;
+      // Garante que ambos os nós existem (prevenção de inconsistências)
+      if (subGraph.hasNode(edge.source) && subGraph.hasNode(edge.target)) {
+        if (!subGraph.hasEdge(edge.source, edge.target)) {
+          subGraph.addEdge(edge.source, edge.target, {
+            weight: weight,
+            size: Math.max(1, weight * 0.5),
+            color: 'rgba(255,255,255,0.15)',
+          });
+        }
+      }
+    });
+
+    if (subGraph.order === 0) return;
+
+    // 3. Ajusta o tamanho e cor para enfatizar o alvo da busca
+    subGraph.forEachNode((node) => {
+      if (node === searchTerm) {
+        // Nó central: maior e com cor forte (ex: vermelho) para destaque
+        subGraph.setNodeAttribute(node, 'size', 15);
+        subGraph.setNodeAttribute(node, 'color', '#EF4444');
+      } else {
+        const degree = subGraph.degree(node);
+        subGraph.setNodeAttribute(node, 'size', Math.max(4, Math.min(6 + degree * 0.5, 12)));
+      }
+    });
+
+    // 4. Montagem assíncrona do SigmaJS
+    const mountSigma = async () => {
+      try {
+        // Aguarda a div container ser instanciada no DOM
+        await new Promise((resolve) => {
+          const check = () => {
+            const el = containerRef.current;
+            if (el && el.offsetWidth > 0 && el.offsetHeight > 0) resolve();
+            else setTimeout(check, 50);
+          };
+          check();
+        });
+
+        clearGraph();
+
+        // Layout inicial espalha os nós circularmente
+        circular.assign(subGraph, { scale: 100 });
+
+        const sigma = new Sigma(subGraph, containerRef.current, {
+          allowInvalidContainer: true,
+          renderLabels:          true,
+          labelThreshold:        3, // Limite baixo pois teremos poucos nós na tela
+          labelFont:             'JetBrains Mono, monospace',
+          labelSize:             12,
+          labelWeight:           '500',
+          labelColor:            { color: '#e2e8f0' },
+          minCameraRatio:        0.02,
+          maxCameraRatio:        10,
+        });
+
+        sigmaRef.current = sigma;
+        graphRef.current = subGraph;
+        setSigmaRenderError(false);
+
+        // 5. Inicia o algoritmo FA2 para espalhar os nós conectatos organizadamente
+        setLayoutDone(false);
+        setLayoutProgress(0);
+
+        const fa2 = new FA2Layout(subGraph, {
+          settings: {
+            scalingRatio: 80,
+            gravity: 1,
+            strongGravityMode: false,
+            slowDown: 10,
+            linLogMode: true,
+            outboundAttractionDistribution: true,
+            edgeWeightInfluence: 0.5,
+            barnesHutOptimize: false, // Menos pesado, false está ok
+          },
+        });
+
+        fa2Ref.current = fa2;
+        fa2.start();
+
+        // Animação de progresso (reduzida para 4s: converte o sub-grafo rapidamente)
+        const LAYOUT_DURATION_MS = 4000;
+        const startTime = Date.now();
+        let animFrame;
+
+        const trackProgress = () => {
+          const elapsed  = Date.now() - startTime;
+          const progress = Math.min((elapsed / LAYOUT_DURATION_MS) * 100, 100);
+          setLayoutProgress(Math.round(progress));
+
+          if (elapsed < LAYOUT_DURATION_MS) {
+            animFrame = requestAnimationFrame(trackProgress);
+          } else {
+            fa2.stop();
+            setLayoutDone(true);
+            setLayoutProgress(100);
+          }
+        };
+        animFrame = requestAnimationFrame(trackProgress);
+
+        return () => {
+          cancelAnimationFrame(animFrame);
+        };
+
+      } catch (err) {
+        console.error('Erro ao renderizar Sigma:', err);
+        setSigmaRenderError(true);
+      }
+    };
+
+    mountSigma();
+
+  }, [searchTerm, minWeight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─────────────────────────────────────────
+  // 3. INTERAÇÃO (Clique em nós do sub-grafo)
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    const sigma = sigmaRef.current;
+    const graph = graphRef.current;
+    if (!sigma || !graph) return;
+
+    const handleClickNode = ({ node }) => {
+      if (graph.hasNode(node)) {
+        setClickedNode({ id: node, ...graph.getNodeAttributes(node) });
+      }
+    };
+
+    const handleClickStage = () => setClickedNode(null);
+
+    sigma.on('clickNode', handleClickNode);
+    sigma.on('clickStage', handleClickStage);
+
+    return () => {
+      sigma.removeListener('clickNode', handleClickNode);
+      sigma.removeListener('clickStage', handleClickStage);
+    };
+  }, [searchTerm, minWeight, layoutDone]);
+
+  // ─────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────
   return (
-    <div className="absolute inset-0 z-0">
+    <div className="absolute inset-0 z-0 bg-gray-950">
+
+      {/* ── Tela de carregamento Inicial ── */}
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
-          <div className="text-lg font-semibold">Carregando grafo...</div>
-        </div>
-      )}
-
-      {/* botão para abrir/fechar mini grafo */}
-      {searchTerm && graph && (
-        <MiniGraphToggleButton onClick={handleMiniGraphToggle} active={showMiniGraph} />
-      )}
-
-      {/* Mini grafo separado */}
-      <MiniGraphView
-        graph={graph}
-        centerNode={searchTerm}
-        minWeight={minWeight}
-        visible={showMiniGraph}
-      />
-
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
-          <div className="text-lg font-semibold text-red-600 p-4 bg-white rounded shadow">
-            Erro ao carregar o grafo: {error}
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-20 gap-4">
+          <div className="flex flex-col items-center gap-3">
+            <svg
+              className="animate-spin h-10 w-10 text-blue-400"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            <span className="text-blue-200 text-lg font-mono tracking-wide">
+              Carregando dados globais...
+            </span>
           </div>
         </div>
       )}
 
+      {/* ── Tela Limpa (Placeholder quando não há busca) ── */}
+      {!loading && !searchTerm && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-10 gap-4">
+           <svg className="w-16 h-16 text-gray-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <circle cx="11" cy="11" r="8" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
+           </svg>
+           <span className="text-gray-400 text-lg font-mono tracking-wide">
+             Busque por um autor para visualizar a sua rede
+           </span>
+        </div>
+      )}
+
+      {/* ── Barra de progresso do layout FA2 do sub-grafo ── */}
+      {!loading && searchTerm && !layoutDone && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none">
+          <span className="text-xs font-mono text-blue-300 opacity-80">
+            Organizando conexões… {layoutProgress}%
+          </span>
+          <div className="w-48 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-400 rounded-full transition-all duration-300"
+              style={{ width: `${layoutProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Erro de download da API ── */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-90 z-20">
+          <div className="text-red-400 font-mono p-6 bg-gray-900 border border-red-700 rounded-lg shadow-xl max-w-sm text-center">
+            <p className="text-sm mb-1 text-red-300 uppercase tracking-widest">Erro</p>
+            <p className="text-base">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Erro de renderização Sigma ── */}
       {sigmaRenderError && <SigmaErrorScreen />}
 
+      {/* ── Container principal Sigma (Visível só se houver searchTerm) ── */}
       <div
+        ref={containerRef}
         id="sigma-container"
-        className="w-full h-full"
+        className={`w-full h-full transition-opacity duration-500 ${searchTerm ? 'opacity-100' : 'opacity-0'}`}
       />
 
+      {/* ── Pop-up de detalhes do nó ── */}
       {clickedNode && (
         <NodeDetailsCard
           node={clickedNode}
