@@ -1,25 +1,22 @@
 #!/bin/bash
 
-# Inicia o backend
-if [ -f scraper.py ]; then
-  echo "Iniciando o backend com Python..."
-  python -m web.back &
-else
-  echo "Erro: Arquivo 'back.py' não encontrado no backend."
-  exit 1
-fi
-# Volta para o diretório raiz
+cleanup() {
+  echo "Encerrando backend e frontend..."
+  kill $BACK_PID $FRONT_PID 2>/dev/null
+  exit
+}
 
-# Inicia o frontend
-cd web/front
-if [ -f package.json ]; then
-  echo "Iniciando o frontend..."
-  npm start &
-else
-  echo "Erro: Não foi encontrado o package.json no frontend."
-  exit 1
-fi
+trap cleanup SIGINT SIGTERM
 
-# Mensagem final
+echo "Iniciando backend..."
+python -m web.back &
+BACK_PID=$!
+
+echo "Iniciando frontend..."
+cd web/front || exit
+npm start &
+FRONT_PID=$!
+
 echo "Backend e frontend estão sendo executados."
 
+wait

@@ -16,7 +16,12 @@ grafo_cache = None
 DB_PATH = "web/publicacoes.db"
 
 # Docentes do Departamento de Computação
-DOCENTES_DC = {"Alan Valejo"}
+DOCENTES_DC = {"Alan Valejo", "Alan Demétrius Baria Valejo",
+"Fredy Valente", "André Ricardo Backes", "André Takeshi Endo",
+"Auri Marcelo Rizzo Vincenzi", "Delano Medeiros Beder",
+"Cesar Henrique Comin","Daniel Lucrédio", "Edilson Reis Rodrigues Kato",
+"Ednaldo Brigante Pizzolato", "Fabiano Cutigi Ferrari", "Hélio Crestana Guardia",
+"Marcela Xavier Ribeiro" }
 
 
 
@@ -212,6 +217,66 @@ class Grafo(Resource):
 
         #flask_restx formata pra json automaticamente
         return formatted
+
+
+@grafo_ns.route("/grafo_dc")
+class GrafoDC(Resource):
+
+    @grafo_ns.doc(
+        summary="Retorna o grafo de coautoria entre os docentes do DC",
+        description="""
+        Filtra e retorna apenas os nós correspondentes aos docentes do Departamento de Computação e as conexões (arestas) entre eles.
+        """
+    )
+
+    @grafo_ns.marshal_with(graph_model)
+    def get(self):
+        grafo, _ = processar_grafo()
+        
+        # Filtrar os nós
+        nos_dc = [n for n in grafo.nodes() if n in DOCENTES_DC]
+        subgrafo = grafo.subgraph(nos_dc)
+        
+        data = json_graph.node_link_data(subgrafo)
+        
+        # Estatísticas do subgrafo
+        num_nos = subgrafo.number_of_nodes()
+        num_arestas = subgrafo.number_of_edges()
+        graus = [subgrafo.degree(n) for n in subgrafo.nodes()]
+        
+        info = {
+            "num_nos": num_nos,
+            "num_arestas": num_arestas,
+            "num_comunidades": 1,
+            "tamanho_medio_comunidade": num_nos,
+            "grau_maximo": max(graus) if graus else 0,
+            "grau_medio": sum(graus) / len(graus) if graus else 0,
+            "grau_minimo": min(graus) if graus else 0,
+        }
+        
+        formatted = {
+            "nodes": [
+                {
+                    "id": node["id"],
+                    "label": node.get("label", str(node["id"])),
+                    "comunidade": node.get("comunidade", -1),
+                    "dc_ufscar": True
+                }
+                for node in data["nodes"]
+            ],
+            "edges": [
+                {
+                    "source": edge["source"],
+                    "target": edge["target"],
+                    "weight": edge.get("peso", 1)
+                }
+                for edge in data["edges"]
+            ],
+            "info": info
+        }
+        
+        return formatted
+
 
 
 if __name__ == "__main__":

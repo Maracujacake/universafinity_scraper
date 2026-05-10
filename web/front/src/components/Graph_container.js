@@ -35,19 +35,19 @@ const GraphContainer = ({
   graphUrl,
 }) => {
   // ── refs ──────────────────────────────────
-  const sigmaRef         = useRef(null);   // instância Sigma
-  const graphRef         = useRef(null);   // instância Graph
-  const fa2Ref           = useRef(null);   // worker FA2
-  const containerRef     = useRef(null);   // div#sigma-container
+  const sigmaRef = useRef(null);   // instância Sigma
+  const graphRef = useRef(null);   // instância Graph
+  const fa2Ref = useRef(null);   // worker FA2
+  const containerRef = useRef(null);   // div#sigma-container
   const fullGraphDataRef = useRef(null);   // guarda os dados baixados (como "base de dados" local)
 
   // ── estado de UI ──────────────────────────
-  const [loading, setLoading]                 = useState(true);
-  const [layoutProgress, setLayoutProgress]   = useState(0);   // 0–100
-  const [layoutDone, setLayoutDone]           = useState(false);
-  const [error, setError]                     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [layoutProgress, setLayoutProgress] = useState(0);   // 0–100
+  const [layoutDone, setLayoutDone] = useState(false);
+  const [error, setError] = useState(null);
   const [sigmaRenderError, setSigmaRenderError] = useState(false);
-  const [clickedNode, setClickedNode]         = useState(null);
+  const [clickedNode, setClickedNode] = useState(null);
 
   // ─────────────────────────────────────────
   // 1. CARREGA OS DADOS (roda uma vez na montagem)
@@ -141,7 +141,7 @@ const GraphContainer = ({
     }
 
     const { nodes: nodeMap, edges: allEdges } = fullGraphDataRef.current;
-    
+
     // Se o nó pesquisado não existe na base local
     if (!nodeMap[searchTerm]) {
       return;
@@ -234,14 +234,14 @@ const GraphContainer = ({
 
         const sigma = new Sigma(subGraph, containerRef.current, {
           allowInvalidContainer: true,
-          renderLabels:          true,
-          labelThreshold:        3, // Limite baixo pois teremos poucos nós na tela
-          labelFont:             'JetBrains Mono, monospace',
-          labelSize:             12,
-          labelWeight:           '500',
-          labelColor:            { color: '#e2e8f0' },
-          minCameraRatio:        0.02,
-          maxCameraRatio:        10,
+          renderLabels: true,
+          labelThreshold: 3, // Limite baixo pois teremos poucos nós na tela
+          labelFont: 'JetBrains Mono, monospace',
+          labelSize: 12,
+          labelWeight: '500',
+          labelColor: { color: '#e2e8f0' },
+          minCameraRatio: 0.02,
+          maxCameraRatio: 10,
         });
 
         sigmaRef.current = sigma;
@@ -269,12 +269,12 @@ const GraphContainer = ({
         fa2.start();
 
         // Animação de progresso (reduzida para 4s: converte o sub-grafo rapidamente)
-        const LAYOUT_DURATION_MS = 4000;
+        const LAYOUT_DURATION_MS = 8000;
         const startTime = Date.now();
         let animFrame;
 
         const trackProgress = () => {
-          const elapsed  = Date.now() - startTime;
+          const elapsed = Date.now() - startTime;
           const progress = Math.min((elapsed / LAYOUT_DURATION_MS) * 100, 100);
           setLayoutProgress(Math.round(progress));
 
@@ -355,13 +355,13 @@ const GraphContainer = ({
       {/* ── Tela Limpa (Placeholder quando não há busca) ── */}
       {!loading && !searchTerm && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 z-10 gap-4">
-           <svg className="w-16 h-16 text-gray-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <circle cx="11" cy="11" r="8" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
-           </svg>
-           <span className="text-gray-400 text-lg font-mono tracking-wide">
-             Busque por um autor para visualizar a sua rede
-           </span>
+          <svg className="w-16 h-16 text-gray-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle cx="11" cy="11" r="8" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
+          </svg>
+          <span className="text-gray-400 text-lg font-mono tracking-wide">
+            Busque por um autor para visualizar a sua rede
+          </span>
         </div>
       )}
 
