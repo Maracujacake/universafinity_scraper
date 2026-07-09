@@ -10,6 +10,11 @@ const panelVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
+function formatStatNumber(value) {
+  if (typeof value !== 'number') return '-';
+  return value.toLocaleString('pt-BR');
+}
+
 const OverlayPanel = ({
   isVisible,
   searchTerm,
@@ -32,7 +37,7 @@ const OverlayPanel = ({
           variants={panelVariants}
           transition={{ duration: 0.4 }}
         >
-          <div className="pointer-events-auto max-w-4xl rounded-lg border border-slate-700 bg-slate-950/88 p-5 text-slate-100 shadow-xl backdrop-blur-md md:p-6">
+          <div className="pointer-events-auto max-w-5xl rounded-lg border border-slate-700 bg-slate-950/88 p-5 text-slate-100 shadow-xl backdrop-blur-md md:p-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">
@@ -46,20 +51,26 @@ const OverlayPanel = ({
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center text-xs text-slate-300 md:w-80">
-                <div className="rounded border border-slate-700 bg-slate-900/80 p-3">
+              <div className="grid grid-cols-1 gap-3 text-center text-xs text-slate-300 sm:grid-cols-3 md:w-[28rem]">
+                <div className="min-w-0 rounded border border-slate-700 bg-slate-900/80 px-4 py-3">
                   <Network className="mx-auto mb-1 h-4 w-4 text-cyan-300" />
-                  <strong className="block text-base text-white">{summaryInfo?.num_nos ?? '-'}</strong>
+                  <strong className="block whitespace-nowrap font-mono text-lg tabular-nums text-white">
+                    {formatStatNumber(summaryInfo?.num_nos)}
+                  </strong>
                   autores
                 </div>
-                <div className="rounded border border-slate-700 bg-slate-900/80 p-3">
+                <div className="min-w-0 rounded border border-slate-700 bg-slate-900/80 px-4 py-3">
                   <Database className="mx-auto mb-1 h-4 w-4 text-emerald-300" />
-                  <strong className="block text-base text-white">{summaryInfo?.num_arestas ?? '-'}</strong>
+                  <strong className="block whitespace-nowrap font-mono text-lg tabular-nums text-white">
+                    {formatStatNumber(summaryInfo?.num_arestas)}
+                  </strong>
                   ligacoes
                 </div>
-                <div className="rounded border border-slate-700 bg-slate-900/80 p-3">
+                <div className="min-w-0 rounded border border-slate-700 bg-slate-900/80 px-4 py-3">
                   <Search className="mx-auto mb-1 h-4 w-4 text-amber-300" />
-                  <strong className="block text-base text-white">{nodeList.length || '-'}</strong>
+                  <strong className="block whitespace-nowrap font-mono text-lg tabular-nums text-white">
+                    {formatStatNumber(nodeList.length || null)}
+                  </strong>
                   no indice
                 </div>
               </div>

@@ -4,7 +4,6 @@ import GraphContainer from '../components/Graph_container';
 import OverlayPanel from '../components/Overlay_panel';
 import FloatingButton from '../components/Floating_button';
 import ConnectionsPanel from '../components/Connection_pannel';
-import FloatingActionMenu from '../components/Floating_ActionMenu';
 
 const BASE_URL = 'http://127.0.0.1:5000/api';
 
@@ -15,7 +14,6 @@ const HomePage = ({
   nodeList,
   setNodeList,
   minWeight,
-  graphInfo,
   setGraphInfo,
   setMinWeight,
 }) => {
@@ -80,8 +78,6 @@ const HomePage = ({
           yearRange={yearRange}
         />
       </div>
-
-      <FloatingActionMenu info={graphInfo} />
 
       <OverlayPanel
         isVisible={isPanelVisible}

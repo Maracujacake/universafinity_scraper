@@ -32,7 +32,6 @@ const App = () => {
             setNodeList={setNodeList}
             minWeight={minWeight}
             setMinWeight={setMinWeight}
-            graphInfo={graphInfo}            
             setGraphInfo={setGraphInfo}     
           />
         } />
