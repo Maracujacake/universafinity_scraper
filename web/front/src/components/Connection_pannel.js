@@ -13,10 +13,15 @@ const ConnectionsPanel = ({ isVisible, connections, onClose }) => {
           exit={{ opacity: 0, y: 50 }}
         >
           <div className="max-w-2xl mx-auto bg-white shadow-xl rounded-xl p-6 relative">
-            <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">Conexões Encontradas</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A8A] mb-4">Conexoes encontradas</h2>
             <ul className="space-y-2">
-              {connections.map(( {node}, index) => (
-                <li key={index} className="border-b py-2 text-[#1E3A8A]">{node}</li>
+              {connections.map(({ node, weight }, index) => (
+                <li key={index} className="flex items-center justify-between gap-4 border-b py-2 text-[#1E3A8A]">
+                  <span>{node}</span>
+                  <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                    {weight} publicacao{weight === 1 ? '' : 'es'}
+                  </span>
+                </li>
               ))}
             </ul>
             <button

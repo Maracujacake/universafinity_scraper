@@ -11,7 +11,7 @@ const HamburgerMenu = ({ onClose }) => {
             className="block px-4 py-2 text-gray-800 hover:bg-gray-200"
             onClick={onClose}
           >
-            Página Inicial
+            Busca
           </Link>
         </li>
         <li>
@@ -20,7 +20,7 @@ const HamburgerMenu = ({ onClose }) => {
             className="block px-4 py-2 text-gray-800 hover:bg-gray-200"
             onClick={onClose}
           >
-            Grafo 2
+            Docentes DC
           </Link>
         </li>
         <li>
@@ -29,7 +29,7 @@ const HamburgerMenu = ({ onClose }) => {
             className="block px-4 py-2 text-gray-800 hover:bg-gray-200"
             onClick={onClose}
           >
-            Grafo 3
+            Grafo completo
           </Link>
         </li>
       </ul>

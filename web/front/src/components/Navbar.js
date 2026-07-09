@@ -1,37 +1,39 @@
 // src/Navbar.js
 import React, { useState } from 'react';
 import HamburgerMenu from './Hamburguer_Menu';
-import { Menu } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Navbar = ({ togglePanel, isPanelVisible }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="bg-[#D1D5DB] py-4 shadow-lg">
+    <nav className="bg-slate-100 py-4 shadow-lg">
       <div className="container mx-auto flex justify-between items-center px-6">
         {/* Logo */}
-        <span className="text-2xl font-bold text-[#1E3A8A]">Universafinity</span>
+        <Link to="/" className="text-2xl font-bold text-slate-900">Universafinity</Link>
 
         {/* Links de navegação (desktop) */}
         <div className="hidden md:flex items-center gap-6">
-          <Link to="/" className="text-[#1E3A8A] hover:underline">Grafo 1</Link>
-          <Link to="/grafo2" className="text-[#1E3A8A] hover:underline">Grafo 2</Link>
-          <Link to="/grafo3" className="text-[#1E3A8A] hover:underline">Grafo 3</Link>
+          <Link to="/" className="text-slate-700 hover:text-slate-950">Busca</Link>
+          <Link to="/grafo2" className="text-slate-700 hover:text-slate-950">Docentes DC</Link>
+          <Link to="/grafo3" className="text-slate-700 hover:text-slate-950">Grafo completo</Link>
         </div>
 
         {/* Grupo de controles: toggle painel + hambúrguer */}
         <div className="flex items-center gap-4">
           <button
             onClick={togglePanel}
-            className="bg-white text-[#1E3A8A] px-4 py-2 rounded-xl hover:bg-gray-200 transition"
+            className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-200"
+            title={isPanelVisible ? 'Fechar pesquisa' : 'Mostrar pesquisa'}
           >
-            {isPanelVisible ? 'Fechar Pesquisa' : 'Mostrar Pesquisa'}
+            <Search className="h-4 w-4" />
+            <span className="hidden sm:inline">{isPanelVisible ? 'Fechar' : 'Pesquisar'}</span>
           </button>
 
           {/* Ícone de menu (mobile) */}
           <button
-            className="text-[#1E3A8A] focus:outline-none md:hidden"
+            className="text-slate-800 focus:outline-none md:hidden"
             onClick={() => setMenuOpen(prev => !prev)}
           >
             <Menu size={28} />

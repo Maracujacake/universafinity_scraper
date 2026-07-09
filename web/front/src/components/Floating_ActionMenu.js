@@ -12,7 +12,7 @@ const FloatingActionMenu = ({ info }) => {
     <>
       {showInfoPanel && <FloatingInfoPanel info={info} />}
 
-      <div className="fixed top-32 left-6 z-50 flex flex-col items-end space-y-3">
+      <div className="fixed right-6 top-24 z-50 flex flex-col items-end space-y-3">
         {isOpen && (
           <>
             <button

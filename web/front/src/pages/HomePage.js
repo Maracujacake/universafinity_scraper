@@ -1,10 +1,12 @@
 // src/pages/HomePage.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import GraphContainer from '../components/Graph_container';
 import OverlayPanel from '../components/Overlay_panel';
 import FloatingButton from '../components/Floating_button';
 import ConnectionsPanel from '../components/Connection_pannel';
 import FloatingActionMenu from '../components/Floating_ActionMenu';
+
+const BASE_URL = 'http://127.0.0.1:5000/api';
 
 const HomePage = ({
   isPanelVisible,
@@ -16,12 +18,49 @@ const HomePage = ({
   graphInfo,
   setGraphInfo,
   setMinWeight,
-  graphUrl,
 }) => {
   const [connections, setConnections] = useState([]);
   const [showConnections, setShowConnections] = useState(false);
   const [foundNode, setFoundNode] = useState(null);
-  
+  const [summaryInfo, setSummaryInfo] = useState(null);
+  const [featuredNode, setFeaturedNode] = useState(null);
+  const [yearRange, setYearRange] = useState(null);
+  const [homeLoadError, setHomeLoadError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHomeData = async () => {
+      try {
+        const [summaryResponse, authorsResponse] = await Promise.all([
+          fetch(`${BASE_URL}/resumo`),
+          fetch(`${BASE_URL}/autores?limit=10000`),
+        ]);
+
+        if (!summaryResponse.ok) throw new Error(`Resumo HTTP ${summaryResponse.status}`);
+        if (!authorsResponse.ok) throw new Error(`Autores HTTP ${authorsResponse.status}`);
+
+        const summaryData = await summaryResponse.json();
+        const authorsData = await authorsResponse.json();
+
+        if (cancelled) return;
+
+        setSummaryInfo(summaryData.info);
+        setGraphInfo(summaryData.info);
+        setFeaturedNode(summaryData.exemplo);
+        setYearRange(summaryData.intervalo_anos);
+        setNodeList(authorsData.autores || []);
+      } catch (err) {
+        if (!cancelled) setHomeLoadError(err.message);
+      }
+    };
+
+    loadHomeData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setGraphInfo, setNodeList]);
 
   const handleSearch = (term) => {
     setSearchTerm(term);
@@ -30,16 +69,15 @@ const HomePage = ({
   };
 
   return (
-    <div className="relative bg-[#1E3A8A] text-white min-h-screen z-10">
+    <div className="relative h-[calc(100vh-4rem)] min-h-[calc(100vh-4rem)] overflow-hidden bg-slate-950 text-white z-10">
       <div className="absolute inset-0 -z-10">
-        {console.log("📦 Renderizando GraphContainer...")}
         <GraphContainer
           searchTerm={searchTerm}
-          setNodeList={setNodeList}
           minWeight={minWeight}
           setConnections={setConnections}
           setGraphInfo={setGraphInfo}
-          graphUrl={graphUrl}
+          featuredNode={featuredNode}
+          yearRange={yearRange}
         />
       </div>
 
@@ -52,6 +90,10 @@ const HomePage = ({
         nodeList={nodeList}
         minWeight={minWeight}
         setMinWeight={setMinWeight}
+        summaryInfo={summaryInfo}
+        featuredNode={featuredNode}
+        homeLoadError={homeLoadError}
+        onSearch={handleSearch}
       />
 
       {/* Botão flutuante só aparece se um nó tiver sido encontrado */}
