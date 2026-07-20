@@ -11,6 +11,8 @@ import re
 
 
 from web.gera_comunidades import detectar_comunidades
+from web.llm_extensions import analyze_teacher_with_optional_llm
+from web.recommendations import recommend_authors
 
 
 app = Flask(__name__)
@@ -630,6 +632,62 @@ class SubgrafoAutor(Resource):
             return {"nodes": [], "edges": [], "info": calcular_info_grafo(nx.Graph())}
 
         return formatar_grafo(subgrafo)
+
+
+@grafo_ns.route("/llm/docente/<path:autor_id>")
+class LLMDocente(Resource):
+
+    @grafo_ns.doc(
+        summary="Prepara uma analise opcional com LLM para um docente",
+        description="""
+        Rota experimental e desligada por padrao. Ela nao altera o fluxo atual
+        de classificacao por palavras-chave nem a recomendacao visual por grafo.
+
+        Para conectar uma LLM futuramente:
+        - UNIVERSAFFINITY_LLM_ENABLED=true
+        - UNIVERSAFFINITY_LLM_ENDPOINT=<endpoint HTTP que aceite POST JSON>
+        - UNIVERSAFFINITY_LLM_API_KEY=<opcional, enviada como Bearer token>
+        """
+    )
+    def get(self, autor_id):
+        grafo, _ = processar_grafo()
+        autor_id = normalizar_nome(autor_id)
+
+        return jsonify(analyze_teacher_with_optional_llm(grafo, autor_id))
+
+
+@grafo_ns.route("/recomendacoes/<path:autor_id>")
+class RecomendacoesAutor(Resource):
+
+    @grafo_ns.doc(
+        summary="Retorna recomendacoes deterministicas para um autor",
+        description="""
+        Combina tres sinais ja presentes no sistema: peso de colaboracao direta,
+        classes extraidas dos titulos e quantidade de vizinhos em comum no grafo.
+        Esta rota e independente da extensao futura com LLM.
+        """
+    )
+    def get(self, autor_id):
+        grafo, _ = processar_grafo()
+        autor_id = normalizar_nome(autor_id)
+        limit = request.args.get("limit", default=8, type=int)
+        only_dc = request.args.get("only_dc", "").lower() in {"1", "true", "yes", "on"}
+
+        recomendacoes = recommend_authors(
+            grafo,
+            autor_id,
+            limit=limit,
+            only_dc=only_dc,
+        )
+
+        if recomendacoes is None:
+            return jsonify({
+                "autor": None,
+                "pesos": {},
+                "recomendacoes": [],
+            })
+
+        return jsonify(recomendacoes)
 
 
 @grafo_ns.route("/grafo_dc")

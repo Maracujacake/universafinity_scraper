@@ -46,6 +46,8 @@ Principais rotas:
 - `GET /api/subgrafo/<autor_id>?min_weight=1&start_year=2000&end_year=2025`: subgrafo de vizinhanca direta de um autor.
 - `GET /api/grafo?min_weight=2&max_nodes=1500`: grafo geral filtrado para visualizacao.
 - `GET /api/grafo_dc`: subgrafo apenas entre docentes do Departamento de Computacao.
+- `GET /api/recomendacoes/<autor_id>?limit=8&only_dc=false`: principais recomendacoes por peso de colaboracao, classes em comum e vizinhos em comum.
+- `GET /api/llm/docente/<autor_id>`: rota experimental para preparar contexto de classificacao/recomendacao com LLM, desligada por padrao.
 - `GET /docs`: documentacao Swagger gerada pelo Flask-RESTX.
 
 ## Interface web
@@ -104,6 +106,20 @@ python -m web.importar_csv_sqlite
 ```
 
 Execute o comando a partir da raiz do repositorio, porque os caminhos esperados sao `web/publicacoes.csv` e `web/publicacoes.db`.
+
+## Extensao futura com LLM
+
+E viavel adicionar uma LLM como camada auxiliar, porque a base atual ja contem titulos de publicacoes, anos, autores, coautorias, pesos de arestas, comunidades e classes heuristicas extraidas dos titulos. A LLM nao deve substituir o grafo nem a classificacao atual automaticamente; o uso mais seguro e pedir que ela gere uma sintese tematica e uma justificativa textual para possiveis recomendacoes, sempre a partir do contexto calculado pelo sistema.
+
+O backend ja possui uma rota opcional em `GET /api/llm/docente/<autor_id>`. Por padrao ela retorna `habilitado: false`, junto com o contexto e um prompt sugerido. Para conectar um provedor futuramente, configure:
+
+```bash
+UNIVERSAFFINITY_LLM_ENABLED=true
+UNIVERSAFFINITY_LLM_ENDPOINT=https://seu-endpoint-llm
+UNIVERSAFFINITY_LLM_API_KEY=opcional
+```
+
+O endpoint configurado deve aceitar `POST` JSON com `prompt`, `contexto` e `task`, e retornar JSON. Sem essas variaveis, o fluxo atual continua identico.
 
 ## Build do frontend
 
